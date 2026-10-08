@@ -13,7 +13,7 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4']
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: shivammathur/setup-php@v2
         with:
           php-version: ${{ matrix.php }}
@@ -62,7 +62,7 @@ jobs:
         ports: ['9200:9200']
         options: --health-cmd "curl -fs localhost:9200" --health-interval 10s --health-timeout 5s --health-retries 30
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
         with:
           path: module
       - uses: shivammathur/setup-php@v2
@@ -71,7 +71,7 @@ jobs:
           extensions: bcmath, gd, intl, pdo_mysql, soap, sockets, xsl, zip, ftp
           coverage: none
           tools: composer:v2
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v6
         with:
           node-version: '22'
       - name: Start the stand-in API
