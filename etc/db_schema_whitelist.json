@@ -1,0 +1,19 @@
+{
+    "supertext_translation_link": {
+        "column": {
+            "link_id": true,
+            "entity_type": true,
+            "source_id": true,
+            "store_id": true,
+            "target_id": true,
+            "updated_at": true
+        },
+        "index": {
+            "SUPERTEXT_TRANSLATION_LINK_ENTITY_TYPE_TARGET_ID": true
+        },
+        "constraint": {
+            "PRIMARY": true,
+            "SUPERTEXT_TRANSLATION_LINK_ENTITY_TYPE_SOURCE_ID_STORE_ID": true
+        }
+    }
+}

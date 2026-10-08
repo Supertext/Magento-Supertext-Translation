@@ -1,0 +1,132 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+    steps:
+      - uses: actions/checkout@v4
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: phpunit:10.5
+      - name: Lint
+        run: find . -name '*.php' -o -name '*.phtml' | grep -v '^./tests/docs/node_modules' | xargs -n1 php -l
+      - name: Unit tests
+        run: phpunit
+      - name: XML files are well-formed
+        run: |
+          find etc view -name '*.xml' -print0 | xargs -0 -n1 php -r 'if (!@simplexml_load_file($argv[1])) { fwrite(STDERR, "Invalid XML: $argv[1]\n"); exit(1); }'
+      - name: Demo entrypoint syntax
+        run: sh -n demo/entrypoint.sh
+      - run: ./build.sh
+
+  # Installs Mage-OS (Magento Open Source 2.4.9 compatible) with MySQL 8.4 and Elasticsearch 8,
+  # adds the module like a hand install (app/code), runs the demo setup twice, then
+  # translates the sample content with the console command against the stand-in API.
+  magento:
+    needs: unit
+    runs-on: ubuntu-latest
+    env:
+      MAGEOS_VERSION: 3.5.0
+      DEMO_ADMIN_EMAIL: admin@example.com
+      DEMO_ADMIN_PASSWORD: Ci-Admin-Chocolate-2026
+      DEMO_EDITOR_EMAIL: editor@example.com
+      DEMO_EDITOR_PASSWORD: Ci-Editor-Chocolate-2026
+      SUPERTEXT_API_KEY: Supertext-Auth-Key ci-key
+      SUPERTEXT_API_ENDPOINT: http://127.0.0.1:8765/v1/
+      COMPOSER_MEMORY_LIMIT: -1
+    services:
+      mysql:
+        image: mysql:8.4
+        env:
+          MYSQL_ROOT_PASSWORD: root
+          MYSQL_DATABASE: magento
+        ports: ['3306:3306']
+        options: --health-cmd "mysqladmin ping -proot" --health-interval 5s --health-timeout 5s --health-retries 20
+      elasticsearch:
+        image: elasticsearch:8.17.0
+        env:
+          discovery.type: single-node
+          xpack.security.enabled: 'false'
+          ES_JAVA_OPTS: -Xms512m -Xmx512m
+        ports: ['9200:9200']
+        options: --health-cmd "curl -fs localhost:9200" --health-interval 10s --health-timeout 5s --health-retries 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          path: module
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: bcmath, gd, intl, pdo_mysql, soap, sockets, xsl, zip, ftp
+          coverage: none
+          tools: composer:v2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Start the stand-in API
+        run: nohup node module/tests/docs/stand-in.mjs > standin.log 2>&1 &
+      - name: Download Mage-OS
+        run: composer create-project --no-interaction --no-progress --no-dev --repository-url=https://repo.mage-os.org/ "mage-os/project-community-edition:$MAGEOS_VERSION" site
+      - name: Add the module
+        run: |
+          mkdir -p site/app/code/Supertext/Translation
+          (cd module && tar cf - --exclude=./.git --exclude=./demo --exclude=./docs --exclude=./tests --exclude=./Test --exclude=./.github .) | tar xf - -C site/app/code/Supertext/Translation
+      - name: Install Magento
+        working-directory: site
+        run: |
+          php -d memory_limit=-1 bin/magento setup:install --no-interaction --base-url=http://localhost/ \
+            --db-host=127.0.0.1 --db-name=magento --db-user=root --db-password=root \
+            --search-engine=elasticsearch8 --elasticsearch-host=127.0.0.1 --elasticsearch-port=9200 \
+            --admin-firstname=CI --admin-lastname=Installer --admin-user=ci --admin-email=ci@supertext-demo.invalid \
+            --admin-password=Ci-Installer-2026 --language=en_US --currency=CHF --timezone=Europe/Zurich --use-rewrites=1
+          php bin/magento module:status Supertext_Translation | grep -q enabled
+      - name: 'Demo setup (twice: the second run changes nothing)'
+        working-directory: site
+        run: |
+          php -d memory_limit=-1 ../module/demo/setup.php "$PWD" | tee ../setup1.log
+          php -d memory_limit=-1 ../module/demo/setup.php "$PWD" | tee ../setup2.log
+          ! grep -E 'added|created' ../setup2.log
+          ! grep -F "$DEMO_ADMIN_PASSWORD" ../setup1.log
+      - name: Translate the sample content
+        working-directory: site
+        run: |
+          q() { mysql -h127.0.0.1 -uroot -proot magento -N -e "$1" 2>/dev/null; }
+          store() { q "SELECT store_id FROM store WHERE code='$1'"; }
+          attr() { q "SELECT attribute_id FROM eav_attribute WHERE attribute_code='$1' AND entity_type_id=$2"; }
+          product=$(q "SELECT entity_id FROM catalog_product_entity WHERE sku='ST-DEMO-PRALINES'")
+          category=$(q "SELECT entity_id FROM catalog_category_entity_varchar WHERE value='swiss-chocolate' AND store_id=0 LIMIT 1")
+          page=$(q "SELECT page_id FROM cms_page WHERE identifier='delivery-and-returns'")
+          block=$(q "SELECT block_id FROM cms_block WHERE identifier='chocolate-promo'")
+          php bin/magento supertext:translate product "$product"
+          php bin/magento supertext:translate category "$category" --store=de_ch
+          php bin/magento supertext:translate cms_page "$page" --store=fr_ch
+          php bin/magento supertext:translate cms_block "$block" --store=it_ch
+          de=$(store de_ch); fr=$(store fr_ch); it=$(store it_ch)
+          test "$(q "SELECT value FROM catalog_product_entity_varchar WHERE entity_id=$product AND store_id=$de AND attribute_id=$(attr name 4)")" = "Pralinenbox mit dunkler Schokolade"
+          test "$(q "SELECT value FROM catalog_product_entity_varchar WHERE entity_id=$product AND store_id=$de AND attribute_id=$(attr url_key 4)")" = "pralinenbox-mit-dunkler-schokolade"
+          q "SELECT value FROM catalog_product_entity_text WHERE entity_id=$product AND store_id=$de AND attribute_id=$(attr description 4)" | grep -q '<strong>Berner</strong>'
+          test "$(q "SELECT COUNT(*) FROM url_rewrite WHERE entity_type='product' AND entity_id=$product AND store_id=$de AND request_path='pralinenbox-mit-dunkler-schokolade.html'")" = "1"
+          test "$(q "SELECT value FROM catalog_category_entity_varchar WHERE entity_id=$category AND store_id=$de AND attribute_id=$(attr name 3)")" = "Schweizer Schokolade"
+          test "$(q "SELECT p.title FROM cms_page p JOIN cms_page_store s USING(page_id) WHERE p.identifier='delivery-and-returns' AND s.store_id=$fr")" = "Livraison et retours"
+          q "SELECT content FROM cms_page p JOIN cms_page_store s USING(page_id) WHERE p.identifier='delivery-and-returns' AND s.store_id=$fr" | grep -q 'data-content-type="row"'
+          q "SELECT content FROM cms_block b JOIN cms_block_store s USING(block_id) WHERE b.identifier='chocolate-promo' AND s.store_id=$it" | grep -qF '{{config path="general/store_information/name"}}'
+          test "$(q "SELECT COUNT(*) FROM supertext_translation_link")" = "2"
+          test "$(q "SELECT COUNT(*) FROM admin_user")" = "2"
+      - name: Second run skips existing translations
+        working-directory: site
+        run: |
+          product=$(mysql -h127.0.0.1 -uroot -proot magento -N -e "SELECT entity_id FROM catalog_product_entity WHERE sku='ST-DEMO-PRALINES'" 2>/dev/null)
+          php bin/magento supertext:translate product "$product" | grep -c skipped | grep -q 3
+      - if: failure()
+        run: cat standin.log; tail -50 site/var/log/*.log || true

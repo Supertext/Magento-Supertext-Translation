@@ -1,0 +1,83 @@
+# Working on this repository
+
+Part of Supertext's translation plugins project: Supertext AI translation for the top open source CMS, PIM and shop systems. Each system has its own repo named `Supertext/<System>-Supertext-Translation`. This one is the **Magento** module (PHP, Magento 2 module `Supertext_Translation`; the repository root is the module). It works with Magento Open Source, Adobe Commerce and Mage-OS; local development, CI and the demo use Mage-OS, which installs without Adobe Marketplace keys.
+
+## Documentation rule (always)
+
+Every plugin repo keeps three guides, and **every change that affects behaviour, settings, installation or the code structure updates them in the same commit**:
+
+| File | Audience | Must cover |
+| --- | --- | --- |
+| `docs/INSTALLATION.md` | Administrators | Requirements, install/update/uninstall, API key, language setup, all settings, troubleshooting |
+| `docs/USER_GUIDE.md` | Editors | How to translate and review in the CMS's own UI, what is and isn't translated, what errors mean |
+| `docs/DEVELOPER.md` | Developers | Architecture, Supertext API protocol, local setup, tests, CI/deploy, releasing, known limitations/roadmap |
+
+Also: `README.md` stays a short overview linking the three guides, and `CHANGELOG.md` gets an entry under *Unreleased* for every user-visible change. Before finishing any task, check the docs still match the code.
+
+## Supertext account and API key links (always)
+
+Everywhere an administrator enters or is told about the API key — the settings field's help text, the "no API key" / "authentication failed" messages, `docs/INSTALLATION.md`, `README.md` and the demo's `.env.example` — show both links (same as the WordPress plugin):
+
+- Create a Supertext account (or log in): https://www.supertext.com/person/en/account/signin
+- Generate the AI API key: https://www.supertext.com/en/integrations/api (supertext.com → Integrations → API; requires the **Admin** role)
+
+Wording: "No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)." In the UI, links open in a new tab (`target="_blank" rel="noopener"`); where the CMS shows plain text only, use the bare URLs. New screens or messages that mention the key get the links too.
+
+## Plugin list (always)
+
+`README.md` ends with the shared list of all Supertext plugins (between the `<!-- supertext-plugins:start -->` and `<!-- supertext-plugins:end -->` markers). It is identical in every Supertext plugin repo: when a plugin is added, renamed or its description changes, update the list in **all** repos, not just this one.
+
+## Releases (always)
+
+Releases are published by `.github/workflows/release.yml`: never tag or create a GitHub release by hand. To release, follow `docs/DEVELOPER.md` → *Releasing* (new version section in `CHANGELOG.md`, same number in `composer.json`) and push to `main`. A push without a new version releases nothing. The configuration page shows the version from `composer.json` via Magento's `PackageInfo` (never a second copy) and links it to the release.
+
+## Repo setup (always)
+
+Every Supertext plugin repo has, and a new one gets from the start:
+
+- `LICENSE` matching the license its manifest declares (`composer.json`, `package.json`, `pyproject.toml`, `.csproj`, plugin header).
+- `SECURITY.md`: report vulnerabilities privately through GitHub's private vulnerability reporting or support@supertext.com, never in public issues.
+- `.github/dependabot.yml`: weekly updates for its package ecosystem and GitHub Actions, minor and patch updates grouped into one pull request.
+- On GitHub: the About box filled in (one-sentence description, website https://www.supertext.com, topics), `main` protected against force-pushes and deletion, Wiki and Projects off, Dependabot alerts and private vulnerability reporting on, and the Supertext social preview image.
+- A row in the plugin list (see *Plugin list*) and in the org profile (`Supertext/.github` → `profile/README.md`).
+
+Claude sessions can't change GitHub repo settings (HTTP 403): add a new repo to Remy's setup script (`set-github-about`) instead of trying.
+
+## Demo accounts rule (always)
+
+Every demo must be usable right after deployment, without anyone registering in a browser. On **every start**, the demo creates these accounts if they don't exist yet:
+
+| Variables | Account |
+| --- | --- |
+| `DEMO_ADMIN_EMAIL`, `DEMO_ADMIN_PASSWORD` | Full administrator (for Supertext staff) |
+| `DEMO_EDITOR_EMAIL`, `DEMO_EDITOR_PASSWORD` | Editor-level account that can translate content in every demo language; used for automated tests and screenshots. Where the CMS has no editor role that works out of the box, use the closest role and document it. |
+
+- Existing accounts are never modified: no password resets from variables, no duplicates on restart.
+- A password that doesn't meet the CMS's own password rules skips that account with a clear warning in the log. The demo still starts.
+- Values live only in the hosting platform's variables (Railway). Never in the repo, in chat or in logs. Log the variable name, never the password.
+- If the CMS has a first-run "create admin" screen, these accounts replace it. Document that once `DEMO_*` is set, the screen no longer appears.
+- If a demo already used CMS-specific names (e.g. `TYPO3_ADMIN_*`, `PAYLOAD_ADMIN_*`), keep them as fallbacks for `DEMO_ADMIN_*`.
+- The demo also seeds its target languages and at least one sample entry in the source language, and makes sure the editor account can access every target language.
+- Document the variables in `docs/DEVELOPER.md` (demo section) and in the demo's `.env.example`.
+
+## Screenshots rule (always)
+
+The user guide and installation guide of every plugin include screenshots of the real UI: at least the translate action before and after translating, a translated result, the overwrite or retranslate warning if there is one, the plugin's settings or configuration screen, and the CMS's language setup. Screenshots are taken from the repo's own demo with the headless browser, by a committed script (e.g. `npm run docs:screenshots`), against a stand-in API that returns real translations for the sample content, so the guides never show placeholder text. Use no real customer data, no secrets, no local URLs (show the live API endpoint). Keep the images small (1× scale, cropped to the relevant part), store them in `docs/images/`, give each one descriptive alt text, and regenerate them in the same commit whenever the UI they show changes.
+
+## Shared Supertext protocol
+
+AI file translation API v1, same as the WordPress plugin: POST HTML file → poll status → GET translation → DELETE. Details in `docs/DEVELOPER.md`. Never commit API keys; use the `SUPERTEXT_API_KEY` environment variable or the module's API key setting (stored encrypted).
+
+Lessons from the live API, apply them here: header `Authorization: Supertext-Auth-Key <key>` (strip a pasted prefix), retry HTTP 429 (per-second rate limit), and keep a whole text in one `data-st-id` element (each one is translated on its own).
+
+## This repo
+
+- Before committing: PHP lint, `php phpunit.phar` (PHPUnit 10; the unit tests run without Magento, see `Test/bootstrap.php`), `./build.sh`. CI also installs Mage-OS with MySQL and Elasticsearch and translates the demo content against the stand-in.
+- Test UI changes in a local Mage-OS with the module **copied** to `app/code/Supertext/Translation` (Magento refuses templates outside its root, so no symlink; see `docs/DEVELOPER.md` → Local development) and regenerate the screenshots they affect (`tests/docs/screenshots.mjs`).
+- New settings go in `etc/adminhtml/system.xml`, `etc/config.xml`, `Model/Config.php` **and** the settings table in `docs/INSTALLATION.md`.
+- Translated fields live in `Model/Translation/EntityTypes.php`; keep "What is translated" in `docs/DEVELOPER.md` and `docs/USER_GUIDE.md` in sync.
+- Keep `Api/` and `Model/Translation/FieldPlanner.php` free of Magento classes (unit tests run without Magento).
+- Products and categories get store-view values (`saveAttribute`, never a full save in store scope); CMS pages and blocks get copies per store view, linked in `supertext_translation_link`. Changing `etc/db_schema.xml` means regenerating `etc/db_schema_whitelist.json` (`bin/magento setup:db-declaration:generate-whitelist --module-name=Supertext_Translation`).
+- `demo/` is the Railway demo (service *Magento* in *supertext-cms-demos-php*, building `demo/Dockerfile` with context = repo root; set on the service, Railway ignores `railway.json`). `demo/setup.php` seeds store views, sample content, the editor role and accounts. Demo secrets live only in Railway variables. Don't export-ignore `demo/` or anything the Dockerfile copies in `.gitattributes`: Railway builds from a `git archive` snapshot.
+- Mage-OS quirks the demo depends on: admin passwords need 12+ characters with letters and digits; `setup:install` rejects an `http://` secure base URL; `Magento_TwoFactorAuth` is disabled in the demo only; admin URLs carry secret keys per controller action (the screenshot script opens pages from menu links and adds `/store/<id>/` before the key).
+- Composer in a Claude session: GitHub downloads are blocked, so install Mage-OS with `preferred-install: source` and `use-github-api: false`, without dev packages (`phpstan/phpstan` is download-only).

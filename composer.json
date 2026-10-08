@@ -1,0 +1,51 @@
+{
+    "name": "supertext/magento-supertext-translation",
+    "description": "Translate Magento products, categories, CMS pages and blocks into your store views' languages with Supertext AI",
+    "type": "magento2-module",
+    "version": "0.1.0",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Supertext AG",
+            "homepage": "https://www.supertext.com"
+        }
+    ],
+    "keywords": [
+        "magento",
+        "magento2",
+        "mage-os",
+        "translation",
+        "supertext",
+        "ai"
+    ],
+    "require": {
+        "php": "~8.2.0||~8.3.0||~8.4.0||~8.5.0",
+        "magento/framework": "*",
+        "magento/module-backend": "*",
+        "magento/module-catalog": "*",
+        "magento/module-catalog-url-rewrite": "*",
+        "magento/module-cms": "*",
+        "magento/module-store": "*",
+        "magento/module-ui": "*",
+        "magento/module-url-rewrite": "*"
+    },
+    "autoload": {
+        "files": [
+            "registration.php"
+        ],
+        "psr-4": {
+            "Supertext\\Translation\\": ""
+        }
+    },
+    "archive": {
+        "exclude": [
+            "/demo",
+            "/docs",
+            "/tests",
+            "/.github"
+        ]
+    },
+    "scripts": {
+        "build": "./build.sh"
+    }
+}

@@ -1,0 +1,20 @@
+version: 2
+# The module's Composer requirements (magento/*) come from Mage-OS or Adobe's repository,
+# not Packagist, so Dependabot watches GitHub Actions and the docs tooling.
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      actions:
+        patterns: ["*"]
+  - package-ecosystem: "npm"
+    directory: "/tests/docs"
+    schedule:
+      interval: "weekly"
+    open-pull-requests-limit: 5
+    groups:
+      minor-and-patch:
+        update-types: ["minor", "patch"]

@@ -1,0 +1,73 @@
+<?xml version="1.0"?>
+<!--
+  Stores → Configuration → Supertext → Translation.
+  The API settings are global; the language code and tone can be set per store view.
+  Keep the settings table in docs/INSTALLATION.md in sync.
+-->
+<config xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="urn:magento:module:Magento_Config:etc/system_file.xsd">
+    <system>
+        <tab id="supertext" translate="label" sortOrder="450">
+            <label>Supertext</label>
+        </tab>
+        <section id="supertext" translate="label" sortOrder="10" showInDefault="1" showInWebsite="1" showInStore="1">
+            <class>separator-top</class>
+            <label>Translation</label>
+            <tab>supertext</tab>
+            <resource>Supertext_Translation::config</resource>
+
+            <group id="api" translate="label comment" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>Supertext connection</label>
+                <field id="version" translate="label" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Module version</label>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\Version</frontend_model>
+                </field>
+                <field id="api_key" translate="label" type="obscure" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Supertext API key</label>
+                    <backend_model>Supertext\Translation\Model\Config\Backend\ApiKey</backend_model>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\ApiKey</frontend_model>
+                </field>
+                <field id="test_connection" translate="label" sortOrder="15" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Test connection</label>
+                    <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\TestButton</frontend_model>
+                </field>
+                <field id="environment" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>API environment</label>
+                    <source_model>Supertext\Translation\Model\Config\Source\Environment</source_model>
+                </field>
+                <field id="endpoint" translate="label comment" type="text" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Custom API base URL</label>
+                    <comment>Optional. Overrides the environment, e.g. for a test server. The SUPERTEXT_API_ENDPOINT environment variable wins.</comment>
+                    <validate>validate-url</validate>
+                </field>
+                <field id="timeout" translate="label comment" type="text" sortOrder="40" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Timeout (seconds)</label>
+                    <comment>Maximum wait for one translation (30–1800).</comment>
+                    <validate>validate-digits validate-digits-range digits-range-30-1800</validate>
+                </field>
+            </group>
+
+            <group id="language" translate="label comment" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                <label>Language</label>
+                <comment><![CDATA[Supertext translates into each store view's language: its locale (<em>General → Locale Options → Locale</em>) unless you enter a different code here. Choose the store view in the <em>Scope</em> switcher at the top to set these per store view.]]></comment>
+                <field id="code" translate="label comment" type="text" sortOrder="10" showInDefault="0" showInWebsite="0" showInStore="1">
+                    <label>Supertext language code</label>
+                    <comment>Optional, e.g. fr-CH for Swiss French. Empty: the store view's locale (de_CH → de-CH).</comment>
+                    <backend_model>Supertext\Translation\Model\Config\Backend\LanguageCode</backend_model>
+                </field>
+                <field id="tone" translate="label" type="select" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
+                    <label>Tone</label>
+                    <source_model>Supertext\Translation\Model\Config\Source\Tone</source_model>
+                </field>
+            </group>
+
+            <group id="cms" translate="label" sortOrder="30" showInDefault="1" showInWebsite="0" showInStore="0">
+                <label>CMS pages and blocks</label>
+                <field id="status" translate="label comment" type="select" sortOrder="10" showInDefault="1" showInWebsite="0" showInStore="0">
+                    <label>Status of new translations</label>
+                    <comment>A translated page or block is a copy for the target store view. "Disabled" lets an editor review it first; the store view then shows no page under that URL until it is enabled.</comment>
+                    <source_model>Supertext\Translation\Model\Config\Source\CmsStatus</source_model>
+                </field>
+            </group>
+        </section>
+    </system>
+</config>

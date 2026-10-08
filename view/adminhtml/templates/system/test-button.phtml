@@ -1,0 +1,27 @@
+<?php
+/**
+ * @var \Supertext\Translation\Block\Adminhtml\System\Config\TestButton $block
+ * @var \Magento\Framework\Escaper $escaper
+ * @var \Magento\Framework\View\Helper\SecureHtmlRenderer $secureRenderer
+ */
+?>
+<button type="button" class="action-default" id="supertext-test-connection">
+    <span><?= $escaper->escapeHtml(__('Test connection')) ?></span>
+</button>
+<div id="supertext-test-result" class="message" style="display:none;margin-top:10px"><div></div></div>
+<p class="note"><span><?= $escaper->escapeHtml(__('Tests the saved key: save the configuration first.')) ?></span></p>
+<?php
+$script = 'require(["jquery"], function ($) {
+    $("#supertext-test-connection").on("click", function () {
+        var box = $("#supertext-test-result");
+        $.ajax({ url: ' . json_encode($block->getTestUrl()) . ', method: "POST", dataType: "json", data: { form_key: window.FORM_KEY }, showLoader: true })
+            .done(function (data) {
+                box.attr("class", "message " + (data.ok ? "message-success success" : "message-error error")).show().children("div").text(data.message);
+            })
+            .fail(function () {
+                box.attr("class", "message message-error error").show().children("div").text(' . json_encode((string) __('The test could not be run.')) . ');
+            });
+    });
+});';
+?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $script, false) ?>

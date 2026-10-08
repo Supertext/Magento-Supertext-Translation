@@ -1,0 +1,222 @@
+<?php
+/**
+ * Translate with Supertext: the selected items, a column per store view, and the store
+ * views to translate into. Translating calls the run URL once per item and store view.
+ *
+ * @var \Supertext\Translation\Block\Adminhtml\Translate $block
+ * @var \Magento\Framework\Escaper $escaper
+ * @var \Magento\Framework\View\Helper\SecureHtmlRenderer $secureRenderer
+ */
+$items  = $block->getItems();
+$stores = $block->getStores();
+$labels = [
+    'none'       => '– ' . __('Not translated'),
+    'partial'    => '◐ ' . __('Partly translated'),
+    'translated' => '✓ ' . __('Translated'),
+    'source'     => (string) __('Source language'),
+];
+?>
+<div class="supertext-page" data-role="supertext-translate"
+     data-run-url="<?= $escaper->escapeUrl($block->getRunUrl()) ?>"
+     data-type="<?= $escaper->escapeHtmlAttr($block->getType()) ?>">
+
+    <?php if (!$block->hasApiKey()): ?>
+        <div class="message message-warning">
+            <div>
+                <strong><?= $escaper->escapeHtml(__('Supertext is not set up yet.')) ?></strong>
+                <?= $escaper->escapeHtml(__('An administrator needs to enter the API key in')) ?>
+                <a href="<?= $escaper->escapeUrl($block->getConfigUrl()) ?>"><?= $escaper->escapeHtml(__('Stores → Configuration → Supertext → Translation')) ?></a>.
+                <?= $escaper->escapeHtml(__('No Supertext account yet?')) ?>
+                <a href="<?= $escaper->escapeUrl($block->getSignupUrl()) ?>" target="_blank" rel="noopener"><?= $escaper->escapeHtml(__('Create one at supertext.com.')) ?></a>
+                <?= $escaper->escapeHtml(__('Generate your API key at')) ?>
+                <a href="<?= $escaper->escapeUrl($block->getApiKeyUrl()) ?>" target="_blank" rel="noopener">supertext.com → Integrations → API</a>
+                <?= $escaper->escapeHtml(__('(requires the Admin role).')) ?>
+            </div>
+        </div>
+    <?php endif ?>
+
+    <?php if (!$block->canEdit()): ?>
+        <div class="message message-error"><div><?= $escaper->escapeHtml(__('You are not allowed to edit this item.')) ?></div></div>
+    <?php endif ?>
+
+    <section class="admin__page-section">
+        <div class="admin__page-section-title">
+            <span class="title"><?= $escaper->escapeHtml($block->getTypeLabel()) ?>: <?= count($items) ?></span>
+        </div>
+
+        <?php if ($items === []): ?>
+            <p><?= $escaper->escapeHtml(__('Nothing selected. Go back to the list and select the items to translate.')) ?></p>
+        <?php elseif (count($stores) < 2): ?>
+            <p>
+                <?= $escaper->escapeHtml(__('Your shop has only one store view. Add a store view per language first, and set its locale.')) ?>
+                <a href="<?= $escaper->escapeUrl($block->getStoresUrl()) ?>"><?= $escaper->escapeHtml(__('Stores → All Stores')) ?></a>
+            </p>
+        <?php else: ?>
+            <div class="admin__fieldset supertext-form">
+                <div class="admin__field">
+                    <div class="admin__field-label"><span><?= $escaper->escapeHtml(__('Translate from')) ?></span></div>
+                    <div class="admin__field-control supertext-static">
+                        <?= $escaper->escapeHtml(__('Default values (All Store Views)')) ?>
+                        <code><?= $escaper->escapeHtml($block->getSourceLocale()) ?></code>
+                    </div>
+                </div>
+                <div class="admin__field">
+                    <div class="admin__field-label"><span><?= $escaper->escapeHtml(__('Translate into')) ?></span></div>
+                    <div class="admin__field-control supertext-stores">
+                        <?php foreach ($stores as $store): ?>
+                            <div class="admin__field-option">
+                                <input type="checkbox" class="admin__control-checkbox supertext-target" id="supertext-store-<?= (int) $store['id'] ?>"
+                                       value="<?= (int) $store['id'] ?>"<?= $store['sameLanguage'] ? '' : ' checked' ?>>
+                                <label class="admin__field-label" for="supertext-store-<?= (int) $store['id'] ?>">
+                                    <?= $escaper->escapeHtml($store['name']) ?> <code><?= $escaper->escapeHtml($store['target']) ?></code>
+                                    <?php if (!$store['active']): ?><span class="supertext-badge"><?= $escaper->escapeHtml(__('Disabled')) ?></span><?php endif ?>
+                                </label>
+                            </div>
+                        <?php endforeach ?>
+                        <div class="admin__field-note"><?= $escaper->escapeHtml(__('Store views in the source language are not ticked.')) ?></div>
+                    </div>
+                </div>
+                <div class="admin__field">
+                    <div class="admin__field-label"></div>
+                    <div class="admin__field-control">
+                        <input type="checkbox" class="admin__control-checkbox" id="supertext-overwrite">
+                        <label class="admin__field-label" for="supertext-overwrite"><?= $escaper->escapeHtml(__('Overwrite existing translations')) ?></label>
+                        <div class="message message-warning supertext-overwrite-warning" role="alert">
+                            <div><?= $escaper->escapeHtml(__('Fields that are already translated will be replaced by the new Supertext translation. Changes made by hand in those store views are lost.')) ?></div>
+                        </div>
+                        <div class="admin__field-note">
+                            <?= $escaper->escapeHtml(__('Without this option, only fields that are empty or still show the default value are filled.')) ?>
+                            <?php if ($block->getType() === 'cms_page'): ?>
+                                <br><?= $escaper->escapeHtml(__('Each translation is a copy of the page for that store view, with the same URL key. The original is no longer shown in those store views.')) ?>
+                            <?php elseif ($block->getType() === 'cms_block'): ?>
+                                <br><?= $escaper->escapeHtml(__('Each translation is a copy of the block for that store view, with the same identifier.')) ?>
+                            <?php endif ?>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <table class="data-grid supertext-table">
+                <thead>
+                <tr>
+                    <th class="data-grid-th"><?= $escaper->escapeHtml(__('Name')) ?></th>
+                    <?php foreach ($stores as $store): ?>
+                        <th class="data-grid-th" data-store="<?= (int) $store['id'] ?>"><?= $escaper->escapeHtml($store['name']) ?></th>
+                    <?php endforeach ?>
+                </tr>
+                </thead>
+                <tbody>
+                <?php foreach ($items as $item): ?>
+                    <tr data-id="<?= (int) $item['id'] ?>">
+                        <td><a href="<?= $escaper->escapeUrl($item['editUrl']) ?>"><?= $escaper->escapeHtml($item['title']) ?></a> <span class="supertext-muted">#<?= (int) $item['id'] ?></span></td>
+                        <?php foreach ($stores as $store): ?>
+                            <?php $state = $store['sameLanguage'] ? 'source' : ($item['states'][$store['id']] ?? 'none') ?>
+                            <td data-store="<?= (int) $store['id'] ?>"><span class="supertext-state <?= $escaper->escapeHtmlAttr($state) ?>"><?= $escaper->escapeHtml($labels[$state]) ?></span></td>
+                        <?php endforeach ?>
+                    </tr>
+                <?php endforeach ?>
+                </tbody>
+            </table>
+
+            <div class="message supertext-summary" role="status"><div></div></div>
+
+            <div class="supertext-actions">
+                <a class="action-default" href="<?= $escaper->escapeUrl($block->getListUrl()) ?>"><?= $escaper->escapeHtml(__('Back to the list')) ?></a>
+                <button type="button" class="action-primary supertext-go"<?= $block->hasApiKey() && $block->canEdit() ? '' : ' disabled' ?>>
+                    <span><?= $escaper->escapeHtml(__('Translate')) ?></span>
+                </button>
+            </div>
+        <?php endif ?>
+    </section>
+</div>
+
+<?= /* @noEscape */ $secureRenderer->renderTag('style', [], <<<CSS
+.supertext-page .supertext-state { font-size: 1.2rem; }
+.supertext-page .supertext-state.none, .supertext-page .supertext-state.source { color: #6c868e; }
+.supertext-page .supertext-state.partial { color: #a35c00; }
+.supertext-page .supertext-state.translated, .supertext-page .supertext-state.done { color: #1f8a49; font-weight: 600; }
+.supertext-page .supertext-state.error { color: #c0392b; font-weight: 600; }
+.supertext-page .supertext-state.running { color: #007bdb; }
+.supertext-page .supertext-state small { display: block; font-weight: normal; color: #6c868e; }
+.supertext-page .supertext-stores .admin__field-option { display: inline-block; margin: 0 2.4rem 0.6rem 0; }
+.supertext-page .supertext-static { padding-top: 0.6rem; }
+.supertext-page .supertext-overwrite-warning { display: none; margin: 1rem 0 0; }
+.supertext-page #supertext-overwrite:checked ~ .supertext-overwrite-warning { display: block; }
+.supertext-page .supertext-table { margin-top: 2rem; }
+.supertext-page .supertext-table td { vertical-align: top; }
+.supertext-page .supertext-summary { display: none; margin-top: 2rem; }
+.supertext-page .supertext-actions { display: flex; justify-content: space-between; margin-top: 2rem; }
+.supertext-page .supertext-muted { color: #6c868e; }
+.supertext-page .supertext-badge { background: #e3e3e3; padding: 0 0.6rem; font-size: 1.1rem; }
+CSS, false) ?>
+
+<?php
+$texts = [
+    'running' => (string) __('Translating…'),
+    'queued'  => (string) __('Waiting…'),
+    'failed'  => (string) __('Failed'),
+    'noStore' => (string) __('Choose at least one store view to translate into.'),
+    'done'    => (string) __('Done: %1 translated, %2 unchanged, %3 failed.'),
+    'hint'    => (string) __('To replace existing translations, tick "Overwrite existing translations" and translate again.'),
+    'open'    => (string) __('Open'),
+];
+$script = 'window.supertextTexts = ' . json_encode($texts, JSON_HEX_TAG | JSON_HEX_AMP | JSON_UNESCAPED_UNICODE) . ';' . <<<'JS'
+require(['jquery'], function ($) {
+    var root = document.querySelector('[data-role="supertext-translate"]');
+    var go = root && root.querySelector('.supertext-go');
+    if (!go) { return; }
+    var t = window.supertextTexts;
+    go.addEventListener('click', async function () {
+        var stores = Array.prototype.map.call(root.querySelectorAll('.supertext-target:checked'), function (c) { return c.value; });
+        if (!stores.length) { alert(t.noStore); return; }
+        var overwrite = root.querySelector('#supertext-overwrite').checked;
+        var jobs = [];
+        root.querySelectorAll('.supertext-table tbody tr').forEach(function (row) {
+            stores.forEach(function (store) {
+                var cell = row.querySelector('td[data-store="' + store + '"] .supertext-state');
+                cell.className = 'supertext-state queued'; cell.textContent = t.queued;
+                jobs.push({ id: row.getAttribute('data-id'), store: store, cell: cell });
+            });
+        });
+        go.disabled = true;
+        var counts = { ok: 0, skipped: 0, failed: 0 };
+        for (var i = 0; i < jobs.length; i++) {
+            var job = jobs[i];
+            job.cell.className = 'supertext-state running'; job.cell.textContent = t.running;
+            try {
+                var data = await $.ajax({
+                    url: root.getAttribute('data-run-url'), method: 'POST', dataType: 'json',
+                    data: { form_key: window.FORM_KEY, type: root.getAttribute('data-type'), id: job.id, store: job.store, overwrite: overwrite ? 1 : 0 }
+                });
+                if (data.ok) {
+                    job.cell.className = 'supertext-state ' + (data.status === 'unchanged' ? 'translated' : 'done');
+                    job.cell.textContent = '✓ ' + data.message;
+                    if (data.editUrl) {
+                        var link = document.createElement('a'); link.href = data.editUrl; link.textContent = ' ' + t.open;
+                        job.cell.appendChild(link);
+                    }
+                    (data.notes || []).forEach(function (note) {
+                        var small = document.createElement('small'); small.textContent = note; job.cell.appendChild(small);
+                    });
+                    counts[data.status === 'unchanged' ? 'skipped' : 'ok']++;
+                } else {
+                    job.cell.className = 'supertext-state error'; job.cell.textContent = '✕ ' + (data.message || t.failed);
+                    counts.failed++;
+                }
+            } catch (e) {
+                var message = (e && e.responseJSON && e.responseJSON.message) || t.failed;
+                job.cell.className = 'supertext-state error'; job.cell.textContent = '✕ ' + message;
+                counts.failed++;
+            }
+        }
+        var summary = root.querySelector('.supertext-summary');
+        summary.firstElementChild.textContent = t.done.replace('%1', counts.ok).replace('%2', counts.skipped).replace('%3', counts.failed)
+            + (counts.skipped && !overwrite ? ' ' + t.hint : '');
+        summary.className = 'message supertext-summary ' + (counts.failed ? 'message-warning' : 'message-success');
+        summary.style.display = 'block';
+        go.disabled = false;
+    });
+});
+JS;
+?>
+<?= /* @noEscape */ $secureRenderer->renderTag('script', [], $script, false) ?>
