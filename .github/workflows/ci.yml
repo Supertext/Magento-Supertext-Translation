@@ -59,6 +59,9 @@ jobs:
         run: |
           composer create-project --no-interaction --no-progress --no-dev --repository-url=https://repo.mage-os.org/ "mage-os/project-community-edition:$MAGEOS_VERSION" site
           cd site
+          # The project's own require-dev (test tooling, PHPStan 1) conflicts with PHPStan 2; it isn't installed anyway.
+          # shellcheck disable=SC2016 # PHP code in single quotes on purpose
+          php -r '$f = "composer.json"; $j = json_decode(file_get_contents($f), true); unset($j["require-dev"]); file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
           composer config allow-plugins.phpstan/extension-installer true
           composer require --dev --no-interaction --no-progress --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
       - name: PHPStan
