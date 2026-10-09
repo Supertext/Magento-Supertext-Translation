@@ -143,7 +143,7 @@ class Config
                 'id'           => $id,
                 'name'         => (string) $store->getName(),
                 'code'         => (string) $store->getCode(),
-                'website'      => (string) $store->getWebsite()->getName(),
+                'website'      => (string) $this->storeManager->getWebsite($store->getWebsiteId())->getName(),
                 'locale'       => $this->locale($id),
                 'target'       => $target,
                 'active'       => (bool) $store->getIsActive(),

@@ -91,7 +91,7 @@ class EavTranslator
     }
 
     /**
-     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>}
+     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
      * @throws SupertextException on failure; the message is shown to the editor
      */

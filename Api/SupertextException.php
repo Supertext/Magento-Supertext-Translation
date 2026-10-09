@@ -60,7 +60,7 @@ final class SupertextException extends \RuntimeException
     {
         $replace = [];
 
-        foreach (array_values($parameters) as $i => $value) {
+        foreach ($parameters as $i => $value) {
             $replace['%' . ($i + 1)] = (string) $value;
         }
 

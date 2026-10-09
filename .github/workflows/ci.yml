@@ -72,7 +72,10 @@ jobs:
         working-directory: site
         run: |
           vendor/bin/phpstan analyse -c ../module/phpstan.neon --no-progress --error-format=raw --memory-limit=2G > ../ps.txt || true
-          echo "::warning::count $(wc -l < ../ps.txt) :: $(tr '\n' '~' < ../ps.txt)"
+          sed -i "s#^$GITHUB_WORKSPACE/module/##" ../ps.txt
+          echo "::warning::count $(wc -l < ../ps.txt)"
+          split -l 8 ../ps.txt ../chunk.
+          for c in ../chunk.*; do echo "::warning::$(tr '\n' '~' < "$c")"; done
           vendor/bin/phpstan analyse -c ../module/phpstan.neon --no-progress --error-format=github --memory-limit=2G
 
   # Installs Mage-OS (Magento Open Source 2.4.9 compatible) with MySQL 8.4 and Elasticsearch 8,

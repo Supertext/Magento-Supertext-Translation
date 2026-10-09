@@ -14,7 +14,7 @@ use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Action\HttpGetActionInterface;
 use Magento\Framework\Controller\ResultFactory;
-use Magento\Framework\View\Result\Page;
+use Magento\Backend\Model\View\Result\Page;
 use Supertext\Translation\Model\Translation\EntityTypes;
 
 /** The "Translate with Supertext" page: ?type=product&ids=1,2 */

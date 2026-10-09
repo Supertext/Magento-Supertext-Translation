@@ -24,6 +24,6 @@ class ApiKey extends Encrypted
             $this->setValue(SupertextClient::normalizeKey($value));
         }
 
-        return parent::beforeSave();
+        parent::beforeSave();
     }
 }

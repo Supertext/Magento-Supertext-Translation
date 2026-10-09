@@ -43,7 +43,7 @@ class Translator
     }
 
     /**
-     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>}
+     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *               status: "translated", "created" (new CMS copy) or "unchanged"
      *
      * @throws SupertextException|\Magento\Framework\Exception\LocalizedException

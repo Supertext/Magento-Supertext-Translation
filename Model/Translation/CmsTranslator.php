@@ -97,7 +97,7 @@ class CmsTranslator
     }
 
     /**
-     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>}
+     * @return array{status: string, title: string, translated: list<string>, kept: list<string>, notes: list<string>, targetId?: int}
      *
      * @throws SupertextException|LocalizedException on failure; the message is shown to the editor
      */
@@ -227,7 +227,7 @@ class CmsTranslator
     private function load(string $type, int $id): AbstractModel
     {
         /** @var Page|Block $item */
-        $item = $type === 'cms_page' ? $this->pageRepository->getById($id) : $this->blockRepository->getById($id);
+        $item = $type === 'cms_page' ? $this->pageRepository->getById($id) : $this->blockRepository->getById((string) $id);
 
         return $item;
     }
