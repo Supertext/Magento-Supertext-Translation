@@ -63,8 +63,7 @@ jobs:
           # shellcheck disable=SC2016 # PHP code in single quotes on purpose
           php -r '$f = "composer.json"; $j = json_decode(file_get_contents($f), true); unset($j["require-dev"]); file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
           composer config allow-plugins.phpstan/extension-installer true
-          grep -l 'phpstan' vendor/*/*/composer.json | sed 's/^/::warning::mentions: /' || true
-          php -r 'foreach (glob("vendor/*/*/composer.json") as $f) { $j = json_decode(file_get_contents($f), true); foreach (["conflict","require","provide","replace"] as $k) { foreach (($j[$k] ?? []) as $p => $v) { if (str_contains($p, "phpstan") || $p === "laminas/laminas-code") echo "::warning::$f $k $p $v\n"; } } }' || true
+          php -r '$o = []; foreach (glob("vendor/*/*/composer.json") as $f) { $j = json_decode(file_get_contents($f), true); foreach (["conflict", "provide", "replace"] as $k) { foreach (($j[$k] ?? []) as $p => $v) { if (str_contains($p, "phpstan")) { $o[] = "$f $k $p $v"; } } } } echo "::warning::" . (implode(" | ", $o) ?: "none") . "\n"; $l = json_decode(file_get_contents("composer.lock"), true); echo "::warning::lock platform " . json_encode([$l["platform"] ?? null, $l["platform-overrides"] ?? null, $l["minimum-stability"] ?? null]) . "\n"; echo "::warning::root " . json_encode(array_diff_key(json_decode(file_get_contents("composer.json"), true), ["require" => 1, "autoload" => 1, "autoload-dev" => 1, "extra" => 1])) . "\n";' || true
           composer require --dev --no-interaction --no-progress --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
       - name: PHPStan
         working-directory: site
