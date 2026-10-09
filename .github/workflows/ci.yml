@@ -63,7 +63,8 @@ jobs:
           # shellcheck disable=SC2016 # PHP code in single quotes on purpose
           php -r '$f = "composer.json"; $j = json_decode(file_get_contents($f), true); unset($j["require-dev"]); file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
           composer config allow-plugins.phpstan/extension-installer true
-          php -r '$o = []; foreach (glob("vendor/*/*/composer.json") as $f) { $j = json_decode(file_get_contents($f), true); foreach (["conflict", "provide", "replace"] as $k) { foreach (($j[$k] ?? []) as $p => $v) { if (str_contains($p, "phpstan")) { $o[] = "$f $k $p $v"; } } } } echo "::warning::" . (implode(" | ", $o) ?: "none") . "\n"; $l = json_decode(file_get_contents("composer.lock"), true); echo "::warning::lock platform " . json_encode([$l["platform"] ?? null, $l["platform-overrides"] ?? null, $l["minimum-stability"] ?? null]) . "\n"; echo "::warning::root " . json_encode(array_diff_key(json_decode(file_get_contents("composer.json"), true), ["require" => 1, "autoload" => 1, "autoload-dev" => 1, "extra" => 1])) . "\n";' || true
+          for flags in "--no-plugins" "--no-scripts"; do composer require --dev --dry-run -W $flags phpstan/phpstan:^2.1 > "../try.log" 2>&1 && echo "::warning::OK with $flags" || echo "::warning::FAIL with $flags: $(grep -m3 -E 'Problem|requires|conflict' ../try.log | tr '\n' ' ')"; done
+          php -r '$l = json_decode(file_get_contents("composer.lock"), true); foreach (array_merge($l["packages"], $l["packages-dev"]) as $p) { if (str_contains($p["name"], "phpstan")) echo "::warning::locked " . $p["name"] . " " . $p["version"] . "\n"; }' 
           composer require --dev --no-interaction --no-progress --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
       - name: PHPStan
         working-directory: site
