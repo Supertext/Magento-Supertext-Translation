@@ -1,2 +1,46 @@
 parameters:
-    ignoreErrors: []
+	ignoreErrors:
+		-
+			message: '#^Parameter \#1 \$prefix of method Magento\\Framework\\View\\Page\\Title\:\:prepend\(\) expects string, Magento\\Framework\\Phrase given\.$#'
+			count: 1
+			path: Controller/Adminhtml/Translate/Index.php
+
+		-
+			message: '#^Parameter \#1 \$block of method Magento\\Cms\\Api\\BlockRepositoryInterface\:\:save\(\) expects Magento\\Cms\\Api\\Data\\BlockInterface, Magento\\Framework\\Model\\AbstractModel given\.$#'
+			count: 1
+			path: Model/Translation/CmsTranslator.php
+
+		-
+			message: '#^Parameter \#1 \$page of method Magento\\Cms\\Api\\PageRepositoryInterface\:\:save\(\) expects Magento\\Cms\\Api\\Data\\PageInterface, Magento\\Framework\\Model\\AbstractModel given\.$#'
+			count: 1
+			path: Model/Translation/CmsTranslator.php
+
+		-
+			message: '#^Parameter \#1 \$sql of method Magento\\Framework\\DB\\Adapter\\AdapterInterface\:\:fetchOne\(\) expects Magento\\Framework\\DB\\Select\|string, Zend_Db_Select given\.$#'
+			count: 1
+			path: Model/Translation/CmsTranslator.php
+
+		-
+			message: '#^Call to an undefined method Magento\\Framework\\Model\\ResourceModel\\Db\\AbstractDb\:\:saveAttribute\(\)\.$#'
+			count: 6
+			path: Model/Translation/EavTranslator.php
+
+		-
+			message: '#^Magento\\Catalog\\Model\\Category\:\:getResource\(\) is deprecated\. Use Resource Models directly$#'
+			count: 2
+			path: Model/Translation/EavTranslator.php
+
+		-
+			message: '#^Magento\\Catalog\\Model\\Category\|Magento\\Catalog\\Model\\Product\:\:getResource\(\) is deprecated\. Use Resource Models directly$#'
+			count: 6
+			path: Model/Translation/EavTranslator.php
+
+		-
+			message: '#^Parameter \#1 \$category of method Magento\\CatalogUrlRewrite\\Model\\CategoryUrlRewriteGenerator\:\:generate\(\) expects Magento\\Catalog\\Model\\Category, Magento\\Catalog\\Api\\Data\\CategoryInterface given\.$#'
+			count: 1
+			path: Model/Translation/EavTranslator.php
+
+		-
+			message: '#^Parameter \#1 \$product of method Magento\\CatalogUrlRewrite\\Model\\ProductUrlRewriteGenerator\:\:generate\(\) expects Magento\\Catalog\\Model\\Product, Magento\\Catalog\\Api\\Data\\ProductInterface given\.$#'
+			count: 1
+			path: Model/Translation/EavTranslator.php

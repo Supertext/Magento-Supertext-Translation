@@ -124,6 +124,6 @@ final class EntityTypes
             $out[] = \strlen($part) === 2 ? strtoupper($part) : ucfirst(strtolower($part));
         }
 
-        return implode('-', array_filter($out, 'strlen'));
+        return implode('-', array_filter($out, static fn (string $part): bool => $part !== ''));
     }
 }
