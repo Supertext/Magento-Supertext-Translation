@@ -103,6 +103,21 @@ final class SupertextClientTest extends TestCase
         $client->translateDocument('<p>x</p>', 'fr-FR');
     }
 
+    public function testKeepsTheTranslatableTemplateApartFromSupertextsDetail(): void
+    {
+        $client = $this->client(fn () => ['status' => 418, 'body' => 'teapot']);
+
+        try {
+            $client->translateDocument('<p>x</p>', 'fr-FR');
+            self::fail('Expected an exception');
+        } catch (SupertextException $e) {
+            self::assertSame('Supertext answered with HTTP 418. (teapot)', $e->getMessage());
+            self::assertSame('Supertext answered with HTTP %1.', $e->template());
+            self::assertSame([418], $e->parameters());
+            self::assertSame('teapot', $e->detail());
+        }
+    }
+
     public function testStopsOnLimitExceededAndCleansUp(): void
     {
         $client = $this->client(function (string $method, string $url): array {

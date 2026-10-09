@@ -10,6 +10,6 @@ version=$(php -r 'echo json_decode(file_get_contents("composer.json"), true)["ve
 zip="dist/magento-supertext-translation-$version.zip"
 mkdir -p dist
 rm -f "$zip"
-zip -qr "$zip" Api Block Console Controller Model etc view composer.json registration.php LICENSE README.md CHANGELOG.md \
+zip -qr "$zip" Api Block Console Controller Model etc i18n view composer.json registration.php LICENSE README.md CHANGELOG.md \
   -x '*.DS_Store'
 echo "$zip"

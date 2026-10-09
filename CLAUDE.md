@@ -23,6 +23,10 @@ Everywhere an administrator enters or is told about the API key — the settings
 
 Wording: "No Supertext account yet? Create one at supertext.com. Generate your API key at supertext.com → Integrations → API (requires the Admin role)." In the UI, links open in a new tab (`target="_blank" rel="noopener"`); where the CMS shows plain text only, use the bare URLs. New screens or messages that mention the key get the links too.
 
+## UI languages (always)
+
+The plugin's own UI (buttons, panels, dialogs, settings, permissions, messages) is available in English, German, French and Italian through the CMS's own translation mechanism, so it follows the user's back-end language. New or changed strings get all four languages in the same commit. Formal address (Sie, vous, Lei), the CMS's own terms in each language, "Supertext", placeholders and URLs never translated.
+
 ## Plugin list (always)
 
 `README.md` ends with the shared list of all Supertext plugins (between the `<!-- supertext-plugins:start -->` and `<!-- supertext-plugins:end -->` markers). It is identical in every Supertext plugin repo: when a plugin is added, renamed or its description changes, update the list in **all** repos, not just this one.
@@ -74,7 +78,8 @@ Lessons from the live API, apply them here: header `Authorization: Supertext-Aut
 
 - Before committing: PHP lint, `php phpunit.phar` (PHPUnit 10; the unit tests run without Magento, see `Test/bootstrap.php`), `./build.sh`. CI also installs Mage-OS with MySQL and Elasticsearch and translates the demo content against the stand-in.
 - Test UI changes in a local Mage-OS with the module **copied** to `app/code/Supertext/Translation` (Magento refuses templates outside its root, so no symlink; see `docs/DEVELOPER.md` → Local development) and regenerate the screenshots they affect (`tests/docs/screenshots.mjs`).
-- New settings go in `etc/adminhtml/system.xml`, `etc/config.xml`, `Model/Config.php` **and** the settings table in `docs/INSTALLATION.md`.
+- New settings go in `etc/adminhtml/system.xml`, `etc/config.xml`, `Model/Config.php`, the German, French and Italian phrases in `i18n/{de_DE,fr_FR,it_IT}.csv` **and** the settings table in `docs/INSTALLATION.md`.
+- UI phrases: `__()` / `translate` in XML, English source, translations in `i18n/de_DE.csv`, `fr_FR.csv`, `it_IT.csv`; run `php tools/sync-translations.php` for the regional copies. `Test/Unit/TranslationFilesTest.php` checks they are complete.
 - Translated fields live in `Model/Translation/EntityTypes.php`; keep "What is translated" in `docs/DEVELOPER.md` and `docs/USER_GUIDE.md` in sync.
 - Keep `Api/` and `Model/Translation/FieldPlanner.php` free of Magento classes (unit tests run without Magento).
 - Products and categories get store-view values (`saveAttribute`, never a full save in store scope); CMS pages and blocks get copies per store view, linked in `supertext_translation_link`. Changing `etc/db_schema.xml` means regenerating `etc/db_schema_whitelist.json` (`bin/magento setup:db-declaration:generate-whitelist --module-name=Supertext_Translation`).

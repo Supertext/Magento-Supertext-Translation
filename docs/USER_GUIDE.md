@@ -2,6 +2,8 @@
 
 For shop editors. Once an administrator has set up the module (see [INSTALLATION.md](INSTALLATION.md)), you translate products, categories, CMS pages and blocks from the Magento admin. Supertext writes the translation into your store views; you review it like any other edit.
 
+The module's screens follow your admin interface language (English, German, French or Italian; *Account Setting → Interface Locale*).
+
 ## Try it on the demo
 
 The Supertext Magento demo (ask Supertext for the address and an admin login) has two English sample products, the category *Swiss chocolate*, the CMS page *Delivery and returns* and the block *Chocolate promotion*, with store views for German (Switzerland), French (Switzerland) and Italian (Switzerland). Translate them as described below, then switch the store view in the shop's language switcher.

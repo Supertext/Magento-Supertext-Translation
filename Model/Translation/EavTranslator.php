@@ -214,7 +214,7 @@ class EavTranslator
         $object->getResource()->load($object, $id);
 
         if (!$object->getId()) {
-            throw new SupertextException(sprintf('%s %d does not exist.', ucfirst($type), $id));
+            throw new SupertextException('%1 %2 does not exist.', [ucfirst($type), $id]);
         }
 
         return $object;

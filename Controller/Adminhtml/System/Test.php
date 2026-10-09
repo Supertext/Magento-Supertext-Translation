@@ -40,7 +40,7 @@ class Test extends Action implements HttpPostActionInterface
         try {
             $this->config->client()->validateApiKey();
         } catch (SupertextException $e) {
-            return $json->setData(['ok' => false, 'message' => $e->getMessage()]);
+            return $json->setData(['ok' => false, 'message' => SupertextException::withDetail((string) __($e->template(), ...$e->parameters()), $e->detail())]);
         }
 
         return $json->setData(['ok' => true, 'message' => (string) __('Connected. The API key works.')]);

@@ -51,15 +51,14 @@ class Translator
     public function translate(string $type, int $id, int $storeId, bool $overwrite): array
     {
         if ($this->config->apiKey() === '') {
-            throw new SupertextException((string) __(
+            throw new SupertextException(
                 'Supertext is not set up yet: an administrator needs to enter the API key in Stores → Configuration → Supertext → Translation. No Supertext account yet? Create one at %1. Generate your API key at %2 (requires the Admin role).',
-                Config::SIGNUP_URL,
-                Config::API_KEY_URL,
-            ));
+                [Config::SIGNUP_URL, Config::API_KEY_URL],
+            );
         }
 
         if ($storeId <= 0) {
-            throw new SupertextException((string) __('Choose a store view to translate into.'));
+            throw new SupertextException('Choose a store view to translate into.');
         }
 
         $this->client ??= $this->config->client();

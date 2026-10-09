@@ -31,6 +31,8 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 │   ├── ui_component/                     mass actions (product, cms_page, cms_block listings), form buttons
 │   ├── layout/supertext_translate_index.xml
 │   └── templates/                        translate.phtml (page + script), system/test-button.phtml
+├── i18n/<locale>.csv                      German, French, Italian admin phrases (English is the source)
+├── tools/sync-translations.php           writes the regional copies (de_CH, fr_CH, it_CH, …)
 └── Test/Unit/                            PHPUnit, runs without Magento (Test/bootstrap.php)
 ```
 
@@ -76,6 +78,14 @@ From `Model/Translation/EntityTypes.php` (keep `docs/USER_GUIDE.md` → *What is
 
 Each item × store view is one Supertext document: one `<div data-st-id="N">` per field, a whole rich-text field in one element. `HtmlDocument` wraps Magento directives in text (`{{widget …}}`, `{{config …}}`) in `<span translate="no" data-st-keep>` and removes the wrapper afterwards; directives in attributes (`src="{{media url=…}}"`) are not touched. The translated document is cut apart as text (tracking nested `<div>`s), not re-serialised through `DOMDocument`, which would URL-encode such attributes and rewrite Page Builder's attribute quoting.
 
+### Interface strings
+
+Every phrase goes through Magento's own mechanism: `__()` in PHP and templates (including the texts the translate page's script uses, passed as `window.supertextTexts`), `translate="label comment"` in `system.xml`, `translate="title"` in `acl.xml`, `<label translate="true">` in UI components. Translations live in `i18n/<locale>.csv` (`"English","translation"`, placeholders `%1`, `%2`). Magento reads the file of the user's exact interface locale and doesn't fall back from de_CH to de_DE, so:
+
+- Edit `de_DE.csv`, `fr_FR.csv` and `it_IT.csv` by hand (formal address: Sie, vous, Lei; Magento's own terms: *Store View* / *vue magasin* / *visualizzazione negozio*, *Stores → Konfiguration*, *Magasins → Configuration*, *Negozi → Configurazione*; never translate "Supertext", placeholders, tags or URLs), then run `php tools/sync-translations.php` to write de_AT, de_CH (ß → ss), fr_BE, fr_CA, fr_CH and it_CH.
+- A new or changed phrase goes into all three files in the same commit. `Test/Unit/TranslationFilesTest.php` collects the phrases like `bin/magento i18n:collect-phrases` (`Test/ModuleStrings.php`) and fails if one is missing, unused, has different placeholders, or a regional copy is out of date.
+- `SupertextException` keeps its English template and `%1` parameters (`template()`, `parameters()`) apart from Supertext's own detail (`detail()`); `Run` and `Test` translate it with `__()`, so `Api/` and the models throw English and stay testable. The console command prints English.
+
 ## Supertext API protocol
 
 AI file translation API v1, same as the WordPress, PrestaShop and other Supertext plugins (`Api/SupertextClient.php`):
@@ -117,7 +127,7 @@ To translate without a Supertext key, run the stand-in API (`node tests/docs/sta
 ## Tests
 
 ```bash
-php phpunit.phar        # PHPUnit 10 (phar): API client, HTML document, field planner — no Magento needed
+php phpunit.phar        # PHPUnit 10 (phar): API client, HTML document, field planner, i18n files — no Magento needed
 ./build.sh              # dist/magento-supertext-translation-<version>.zip
 ```
 
@@ -200,7 +210,7 @@ The release attaches `magento-supertext-translation-X.Y.Z.zip`, built by `./buil
 
 - Magento coding standard (PSR-12 based), constructor property promotion, `declare(strict_types=1)`.
 - Keep `Api/` and `Model/Translation/FieldPlanner.php` free of Magento classes so they stay unit-testable.
-- User-visible strings go through `__()`; messages from the API client are English.
+- User-visible strings go through `__()` (or `translate` in XML), with German, French and Italian in `i18n/` (see *Interface strings*); the API client and models throw English templates that the controllers translate.
 - New settings go in `etc/adminhtml/system.xml`, `etc/config.xml` (default), `Model/Config.php` and the settings table in `docs/INSTALLATION.md`.
 - Keep the three docs in `docs/` current with every change (see `CLAUDE.md`).
 
@@ -210,6 +220,5 @@ The release attaches `magento-supertext-translation-X.Y.Z.zip`, built by `./buil
 - Not translated yet: other product attributes (custom text attributes, dropdown option labels), image labels, custom options, widget instances, emails.
 - Subcategory URL paths in a store view follow a translated parent only once the subcategory is translated too.
 - Mage-OS's own automatic translation module, when switched on with periodic re-translation, can overwrite store-view values.
-- Admin texts are English only; German is planned.
 - Translation runs in the browser, one item and store view at a time; selections are cut to 100 items. A queue (Magento's message queue) would allow more.
 - Professional (human) translation orders, as in the WordPress plugin, are not offered.

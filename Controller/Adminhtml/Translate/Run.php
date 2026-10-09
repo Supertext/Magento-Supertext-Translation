@@ -63,7 +63,11 @@ class Run extends Action implements HttpPostActionInterface
         } catch (SupertextException|LocalizedException $e) {
             $this->logger->warning(sprintf('Supertext: %s %d → store %d: %s', $type, $id, $storeId, $e->getMessage()));
 
-            return $json->setData(['ok' => false, 'message' => $e->getMessage()]);
+            $message = $e instanceof SupertextException
+                ? SupertextException::withDetail((string) __($e->template(), ...$e->parameters()), $e->detail())
+                : $e->getMessage();
+
+            return $json->setData(['ok' => false, 'message' => $message]);
         }
 
         $kept = \count($result['kept']);

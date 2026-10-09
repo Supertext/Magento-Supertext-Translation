@@ -101,6 +101,10 @@ Without `--store`, every store view in another language than the default locale 
 
 Admin users whose role allows **Translate with Supertext** (*System → Permissions → User Roles → Role Resources*) **and** editing the item: *Catalog → Inventory → Products* for products, *Catalog → Inventory → Categories* for categories, *Content → Elements → Pages → Save Page* for pages, *Content → Elements → Blocks* for blocks. The configuration needs *Stores → Settings → Configuration → Supertext Translation*. The *Administrators* role has all of these.
 
+## Interface languages
+
+The module's admin screens (configuration, *Translate with Supertext* page, buttons, mass actions, ACL resources and messages) are available in English, German, French and Italian. They follow each admin user's **Interface Locale**: account menu at the top right → *Account Setting* → *Interface Locale* (or *System → Permissions → All Users*). Magento lists a locale there once its language pack is installed and the admin's static content is deployed for it (`bin/magento setup:static-content:deploy de_CH` in production mode). The module ships `i18n/` files for de_DE, de_AT, de_CH, fr_FR, fr_BE, fr_CA, fr_CH, it_IT and it_CH; other locales show English. Inline translations and language packs that translate the same phrases for `Supertext_Translation` take precedence.
+
 ## All settings
 
 | Setting | Scope | Default | Purpose |

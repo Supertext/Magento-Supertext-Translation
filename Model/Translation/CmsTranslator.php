@@ -110,7 +110,7 @@ class CmsTranslator
         $notes  = [];
 
         if ($stores === [$storeId]) {
-            throw new SupertextException((string) __('The original is assigned only to this store view. Assign it to the store views of its own language first.'));
+            throw new SupertextException('The original is assigned only to this store view. Assign it to the store views of its own language first.');
         }
 
         $target  = $this->target($type, $source, $storeId);
@@ -166,7 +166,7 @@ class CmsTranslator
                 $this->saveStores($source, $restore);
             }
 
-            throw new SupertextException((string) __('The translation could not be saved: %1', $e->getMessage()), 0, $e);
+            throw new SupertextException('The translation could not be saved: %1', [$e->getMessage()], 0, $e);
         }
 
         $this->link($type, (int) $source->getId(), $storeId, (int) $target->getId());
