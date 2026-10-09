@@ -59,12 +59,14 @@ jobs:
         run: |
           composer create-project --no-interaction --no-progress --no-dev --repository-url=https://repo.mage-os.org/ "mage-os/project-community-edition:$MAGEOS_VERSION" site
           cd site
-          # The project's own require-dev (test tooling, PHPStan 1) conflicts with PHPStan 2; it isn't installed anyway.
+          # The project's own dev packages (test tooling, PHPStan 1) block PHPStan 2 and aren't installed: drop them.
           # shellcheck disable=SC2016 # PHP code in single quotes on purpose
-          php -r '$f = "composer.json"; $j = json_decode(file_get_contents($f), true); unset($j["require-dev"]); file_put_contents($f, json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
+          php -r '
+            $j = json_decode(file_get_contents("composer.json"), true); unset($j["require-dev"]);
+            file_put_contents("composer.json", json_encode($j, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));
+            $l = json_decode(file_get_contents("composer.lock"), true); $l["packages-dev"] = [];
+            file_put_contents("composer.lock", json_encode($l, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES));'
           composer config allow-plugins.phpstan/extension-installer true
-          for flags in "--no-plugins" "--no-scripts"; do composer require --dev --dry-run -W $flags phpstan/phpstan:^2.1 > "../try.log" 2>&1 && echo "::warning::OK with $flags" || echo "::warning::FAIL with $flags: $(grep -m3 -E 'Problem|requires|conflict' ../try.log | tr '\n' ' ')"; done
-          php -r '$l = json_decode(file_get_contents("composer.lock"), true); foreach (array_merge($l["packages"], $l["packages-dev"]) as $p) { if (str_contains($p["name"], "phpstan")) echo "::warning::locked " . $p["name"] . " " . $p["version"] . "\n"; }' 
           composer require --dev --no-interaction --no-progress --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
       - name: PHPStan
         working-directory: site
