@@ -136,6 +136,7 @@ The module's `composer.json` requires `magento/*` packages, which aren't on Pack
 CI (`.github/workflows/ci.yml`):
 
 - **unit** (PHP 8.2, 8.3, 8.4): lint (`.php`, `.phtml`), PHPUnit, XML well-formedness, `sh -n demo/entrypoint.sh`, `./build.sh`.
+- **phpstan**: PHPStan on the module's code with Mage-OS's classes (see *Code quality and security checks*).
 - **magento**: downloads Mage-OS, installs it with MySQL 8.4 and Elasticsearch 8, adds the module in `app/code`, runs `demo/setup.php` twice (the second run must change nothing, and no password may appear in the log), translates the sample product, category, page and block with `supertext:translate` against the stand-in and checks the store values, URL key and rewrite, page copy with Page Builder markup, block directives, link table and accounts; a second run must skip everything.
 
 ## Demo (Railway)
@@ -195,11 +196,30 @@ BASE_URL=http://localhost:8091/admin DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=�
 
 `ONLY=admin` or `ONLY=editor` runs one part. Run it in the same commit as any UI change the images show.
 
+## Code quality and security checks
+
+Before starting work in this repo, look at its open findings: code scanning alerts, secret scanning alerts, Dependabot PRs and the "Broken links in the docs" issue.
+
+- **Checks** (`.github/workflows/checks.yml`): actionlint and zizmor lint the workflows on every push and pull request; dependency review fails a pull request that adds a package with a known vulnerability (moderate or worse). Third-party actions are pinned to commit SHAs (Dependabot keeps them current).
+- **Links** (`.github/workflows/links.yml`): lychee checks the links in all Markdown files weekly and when docs change on `main`. Broken links open (or update) the issue "Broken links in the docs"; links that can't work from CI go in `.lycheeignore` (one regex per line).
+- **PHPStan** (job **phpstan** in `ci.yml`, configuration `phpstan.neon`): level 5 on `Api/`, `Block/`, `Console/`, `Controller/`, `Model/` and `registration.php` (not the templates, `demo/` or the tests). PHPStan has to know Magento's classes, so it runs from a Mage-OS root (no database needed) with [bitexpert/phpstan-magento](https://github.com/bitExpert/phpstan-magento), which also understands the generated factories and proxies. Locally:
+
+  ```bash
+  composer create-project --no-dev --repository-url=https://repo.mage-os.org/ mage-os/project-community-edition:3.5.0 /tmp/mageos
+  cd /tmp/mageos
+  composer config allow-plugins.phpstan/extension-installer true
+  composer require --dev --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
+  vendor/bin/phpstan analyse -c /path/to/magento-supertext-translation/phpstan.neon --memory-limit=2G
+  ```
+
+  Known findings that aren't fixed yet go in `phpstan-baseline.neon` (add `--generate-baseline /path/to/magento-supertext-translation/phpstan-baseline.neon`); fix new findings instead of adding them.
+- **GitHub settings** (set by Remy's setup script, not in the repo): secret scanning with push protection (a push containing a known token format is rejected; findings under *Security → Secret scanning*) and CodeQL default setup (findings under *Security → Code scanning* and as pull request comments). CodeQL doesn't cover PHP, which is why this repo runs PHPStan.
+
 ## Releasing
 
 Releases are published by `.github/workflows/release.yml` when the version is officially bumped; nobody tags or creates releases by hand.
 
-1. Check that the unit tests and `./build.sh` pass.
+1. Check that the unit tests, PHPStan (CI job **phpstan**) and `./build.sh` pass.
 2. Move the *Unreleased* entries in `CHANGELOG.md` under a new `## X.Y.Z — YYYY-MM-DD` section, and keep an empty *Unreleased* above it.
 3. Set the same version in `composer.json` (`version`). Magento reads it through `PackageInfo`: the configuration page shows it and links it to the GitHub release, and the console command prints it.
 4. Push to `main`. The workflow checks that `composer.json` matches `CHANGELOG.md`, then tags `vX.Y.Z` and creates the GitHub release with the CHANGELOG section as notes (0.x versions as pre-releases). A push that adds no new version does nothing, and a version that is already released is skipped. After fixing a failed run, start it again with *Run workflow* on the *Release* workflow.

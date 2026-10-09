@@ -1,0 +1,15 @@
+# PHPStan for the module's own code. Magento's classes come from a Mage-OS installation:
+# run it from the Magento root with bitexpert/phpstan-magento installed there
+# (see docs/DEVELOPER.md → Code quality and security checks).
+includes:
+    - phpstan-baseline.neon
+
+parameters:
+    level: 5
+    paths:
+        - Api
+        - Block
+        - Console
+        - Controller
+        - Model
+        - registration.php

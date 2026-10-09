@@ -6,6 +6,9 @@ on:
   pull_request:
   workflow_dispatch:
 
+permissions:
+  contents: read
+
 jobs:
   unit:
     runs-on: ubuntu-latest
@@ -13,8 +16,10 @@ jobs:
       matrix:
         php: ['8.2', '8.3', '8.4']
     steps:
-      - uses: actions/checkout@v7
-      - uses: shivammathur/setup-php@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: ${{ matrix.php }}
           coverage: none
@@ -25,10 +30,40 @@ jobs:
         run: phpunit
       - name: XML files are well-formed
         run: |
+          # The PHP code is in single quotes on purpose: PHP expands $argv, not the shell.
+          # shellcheck disable=SC2016
           find etc view -name '*.xml' -print0 | xargs -0 -n1 php -r 'if (!@simplexml_load_file($argv[1])) { fwrite(STDERR, "Invalid XML: $argv[1]\n"); exit(1); }'
       - name: Demo entrypoint syntax
         run: sh -n demo/entrypoint.sh
       - run: ./build.sh
+
+  # PHPStan on the module's code. Mage-OS (without a database) gives PHPStan the Magento
+  # classes; bitexpert/phpstan-magento handles the generated factories and proxies.
+  phpstan:
+    runs-on: ubuntu-latest
+    env:
+      MAGEOS_VERSION: 3.5.0
+      COMPOSER_MEMORY_LIMIT: -1
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          path: module
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
+        with:
+          php-version: '8.3'
+          extensions: bcmath, gd, intl, pdo_mysql, soap, sockets, xsl, zip, ftp
+          coverage: none
+          tools: composer:v2
+      - name: Download Mage-OS and the PHPStan tooling
+        run: |
+          composer create-project --no-interaction --no-progress --no-dev --repository-url=https://repo.mage-os.org/ "mage-os/project-community-edition:$MAGEOS_VERSION" site
+          cd site
+          composer config allow-plugins.phpstan/extension-installer true
+          composer require --dev --no-interaction --no-progress --with-all-dependencies phpstan/phpstan:^2.1 phpstan/extension-installer bitexpert/phpstan-magento
+      - name: PHPStan
+        working-directory: site
+        run: vendor/bin/phpstan analyse -c ../module/phpstan.neon --no-progress --error-format=github --memory-limit=2G
 
   # Installs Mage-OS (Magento Open Source 2.4.9 compatible) with MySQL 8.4 and Elasticsearch 8,
   # adds the module like a hand install (app/code), runs the demo setup twice, then
@@ -62,16 +97,17 @@ jobs:
         ports: ['9200:9200']
         options: --health-cmd "curl -fs localhost:9200" --health-interval 10s --health-timeout 5s --health-retries 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           path: module
-      - uses: shivammathur/setup-php@v2
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # 2.40.0
         with:
           php-version: '8.3'
           extensions: bcmath, gd, intl, pdo_mysql, soap, sockets, xsl, zip, ftp
           coverage: none
           tools: composer:v2
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: '22'
       - name: Start the stand-in API
@@ -96,8 +132,8 @@ jobs:
         run: |
           php -d memory_limit=-1 ../module/demo/setup.php "$PWD" | tee ../setup1.log
           php -d memory_limit=-1 ../module/demo/setup.php "$PWD" | tee ../setup2.log
-          ! grep -E 'added|created' ../setup2.log
-          ! grep -F "$DEMO_ADMIN_PASSWORD" ../setup1.log
+          if grep -E 'added|created' ../setup2.log; then exit 1; fi
+          if grep -qF "$DEMO_ADMIN_PASSWORD" ../setup1.log; then echo "Password in the setup log" >&2; exit 1; fi
       - name: Translate the sample content
         working-directory: site
         run: |
