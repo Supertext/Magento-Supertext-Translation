@@ -9,10 +9,12 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 ```
 ├── registration.php, composer.json (version), etc/module.xml
 ├── lib/supertext-sdk/                    the Supertext SDK for PHP, vendored (don't edit; see *Supertext SDK*)
+├── lib/supertext-plugin-health/          Supertext Plugin Health for PHP, vendored (don't edit; see *Supertext Plugin Health*)
 ├── Api/                                  no Magento classes (unit-tested on their own)
 │   ├── Supertext.php                     the SDK client with the module's defaults, SDK errors → messages
 │   ├── LanguageCodes.php                 locales → Supertext codes (the SDK's Languages + the store view setting; no guessing)
-│   ├── Reporting.php                     Commando Center: the SDK's InstallationReporter with the module's state
+│   ├── Reporting.php                     Commando Center: Plugin Health's InstallationReporter with the module's state
+│   ├── ReportTransport.php               Plugin Health's HTTP over an SDK transport (the tests' fake)
 │   └── SupertextException.php            translatable message (English template, %1 parameters, detail)
 ├── Model/
 │   ├── Config.php                        settings, env variables, store views and their languages, version
@@ -38,6 +40,7 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 │   └── templates/                        translate.phtml (page + script), system/test-button.phtml
 ├── i18n/<locale>.csv                      German, French, Italian admin phrases (English is the source)
 ├── scripts/vendor-sdk.sh                 updates lib/supertext-sdk from the SDK repository
+├── scripts/vendor-plugin-health.sh       updates lib/supertext-plugin-health from the Commando Center repository
 ├── tools/sync-translations.php           writes the regional copies (de_CH, fr_CH, it_CH, …)
 └── Test/Unit/                            PHPUnit, runs without Magento (Test/bootstrap.php)
 ```
@@ -112,11 +115,19 @@ AI file translation API v1, same as the WordPress, PrestaShop and other Supertex
 
 ### Supertext SDK
 
-Supertext calls go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php) 0.2.1 (namespace `Supertext\Sdk`: the API classes in `Supertext\Sdk\V1`, the HTTP transport in `Supertext\Sdk\Http`), shared by all Supertext integrations and tested against the same spec vectors and stand-in. It isn't on Packagist yet, so it is vendored in `lib/supertext-sdk/` (`COMMIT` names the SDK commit, `README.md` where it comes from):
+Supertext calls go through the [Supertext SDK for PHP](https://github.com/Supertext/Supertext-API-SDK-and-Guide/tree/main/sdk/php) 0.3.0, which provides the API client and the API key check (`Client::checkApiKey()`, `Protocol::apiKeyFingerprint()`; version reports are Supertext Plugin Health's, see below) (namespace `Supertext\Sdk`: the API classes in `Supertext\Sdk\V1`, the HTTP transport in `Supertext\Sdk\Http`), shared by all Supertext integrations and tested against the same spec vectors and stand-in. It isn't on Packagist yet, so it is vendored in `lib/supertext-sdk/` (`COMMIT` names the SDK commit, `README.md` where it comes from):
 
 - `registration.php` loads `lib/supertext-sdk/autoload.php`, so the SDK works for Composer and app/code installs alike; `./build.sh` puts `lib/` in the zip, `phpstan.neon` scans it without analysing it.
 - Reach it through `Api/Supertext.php` (`Supertext::client()`, `Config::client()`): it sets the base URL, the timeout and the `User-Agent`. Its built-in transport uses ext-curl, which Magento requires anyway; cURL honours `HTTPS_PROXY`.
 - Never edit the vendored files: fix the SDK upstream, then update with `scripts/vendor-sdk.sh [commit-or-branch]` (default `main`; `SDK_DIR=/path/to/clone scripts/vendor-sdk.sh` uses a local clone as it is; it replaces the folder entirely) and run the tests. Once the SDK is on Packagist, require `supertext/supertext-sdk` in `composer.json` instead (keeping the autoloader for app/code installs).
+
+### Supertext Plugin Health
+
+[Supertext Plugin Health](https://github.com/Supertext/Commando-Center-Supertext-Translation/tree/main/plugin-health) 0.1.0 is the plugin side of the Supertext Commando Center: version reports, the report of the API key check result and the answer of the ping endpoint (`InstallationReporter`, `ReporterState`, `KeyCheck`, `PingResponse`, namespace `Supertext\PluginHealth`). It has no dependencies and doesn't need the SDK: `Api/Reporting.php` passes the SDK's key check in (`CallableKeyChecker` with `Client::checkApiKey()` and `Protocol::apiKeyFingerprint()`) and `Supertext::SDK_VERSION` as `sdkVersion`. It is vendored like the SDK in `lib/supertext-plugin-health/` (namespace unchanged; `VERSION`, `COMMIT` and `README.md` say where it comes from):
+
+- `registration.php` (and `Test/bootstrap.php`) load `lib/supertext-plugin-health/autoload.php`, written by the vendor script; `./build.sh` puts it in the zip with `lib/`, `phpstan.neon` scans it without analysing it.
+- Its stored state is the same JSON the SDK 0.1–0.2 reporter stored, so shops that update keep their history (no new `installed` report). Its built-in transport uses ext-curl; in the tests `Api/ReportTransport.php` runs its reports through the same fake SDK transport as the key check.
+- Never edit the vendored files: fix it in Commando-Center-Supertext-Translation → `plugin-health/`, then update with `scripts/vendor-plugin-health.sh <tag>` (e.g. `plugin-health-v0.1.0`; default `main`; `PLUGIN_HEALTH_DIR=/path/to/clone` uses a local clone as it is; it replaces the folder entirely) and run the tests.
 
 ### Language codes
 
@@ -134,10 +145,10 @@ The stand-in (`tests/docs/stand-in.mjs`) accepts only Supertext's target codes a
 
 ### Commando Center: version reports, key check, ping
 
-Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/Commando-Center-Supertext-Translation) → `docs/DEVELOPER.md` → *Report protocol*. The SDK's `InstallationReporter` implements it; `Api/Reporting.php` (no Magento classes) loads the state, runs one action and stores the new state, and never throws (storage errors included). `Model/Reporting.php` gives it what Magento knows:
+Protocol: [Commando-Center-Supertext-Translation](https://github.com/Supertext/Commando-Center-Supertext-Translation) → `docs/DEVELOPER.md` → *Report protocol*. Supertext Plugin Health's `InstallationReporter` implements it, with the SDK's `checkApiKey()` as the key check; `Api/Reporting.php` (no Magento classes) loads the state, runs one action and stores the new state, and never throws (storage errors included). `Model/Reporting.php` gives it what Magento knows:
 
 - **Setting:** `supertext/api/version_reports` (*Send version information to Supertext*, Yes/No, default Yes in `etc/config.xml`). The environment variable `SUPERTEXT_VERSION_REPORTS` wins (`InstallationReporter::reportsEnabled()`); `Block\Adminhtml\System\Config\VersionReports` then disables the field and says so, and shows the ping URL while reports are on. Off: no reports, ping 404. `SUPERTEXT_REPORT_URL` sends reports elsewhere (CI, screenshots: the stand-in's `POST /report`).
-- **Report fields:** plugin `Magento-Supertext-Translation` (the GitHub repository name) with the version from `composer.json` (`PackageInfo`, `Config::version()`), system `ProductMetadataInterface::getName()` (`Magento`) and `getVersion()`, runtime PHP; `site_url` = the default store view's base URL (`getBaseUrl(URL_TYPE_WEB, isFrontUrlSecure())`); `callback.url` = its link URL (`URL_TYPE_LINK`, with `index.php/` when URL rewrites are off) + `supertext/ping`.
+- **Report fields:** plugin `Magento-Supertext-Translation` (the GitHub repository name) with the version from `composer.json` (`PackageInfo`, `Config::version()`), system `ProductMetadataInterface::getName()` (`Magento`) and `getVersion()`, runtime PHP, `sdk_version` = the bundled SDK's `Supertext::SDK_VERSION`; `site_url` = the default store view's base URL (`getBaseUrl(URL_TYPE_WEB, isFrontUrlSecure())`); `callback.url` = its link URL (`URL_TYPE_LINK`, with `index.php/` when URL rewrites are off) + `supertext/ping`.
 - **When:** `afterSettingsSaved` on `admin_system_config_changed_section_supertext` (`Observer\SettingsSaved`, any scope; its key check becomes the success or warning message, HTML with the links); `testConnection` for *Test connection* (`Controller\Adminhtml\System\Test`, returns the message as text and HTML); `onRequest` when the configuration section is opened (`Observer\SettingsPage` on `controller_action_predispatch_adminhtml_system_config_edit`), on the *Translate with Supertext* page, on every `Run` and in `supertext:translate`; `authenticationFailed` when a translation gets 401/403 (`Translator`). In web requests `Model\Reporting` runs `onRequest` and `authenticationFailed` in a shutdown function that first calls `fastcgi_finish_request()` where available (under PHP-FPM after the response, under mod_php at the end of the request), at most once per request; on the command line right away. `onRequest` only makes a request when the key changed or a report is due. Never on storefront pages.
 - **State:** the reporter's JSON (reported versions, last key status, last failure, the latest key check with the key's SHA-256 fingerprint; never the key) in Magento's `flag` table, code `supertext_reporter` (`FlagManager`). The configuration's *API key check* field (`Block\Adminhtml\System\Config\KeyCheck`) shows the latest check with its time.
 - **Ping:** `Controller/Ping/Index.php` on the frontend route `supertext` (`etc/frontend/routes.xml`): an `HttpGetActionInterface` that returns a raw result with exactly `InstallationReporter::pingResponse()`'s status, headers (`Content-Type: application/json`, `Cache-Control: no-store`, so the full-page cache and Varnish never keep it) and body. No login, no form key; other methods get Magento's 404.
@@ -172,7 +183,7 @@ php phpunit.phar        # PHPUnit 10 (phar): SDK use and error messages, field p
 ./build.sh              # dist/magento-supertext-translation-<version>.zip
 ```
 
-The module's `composer.json` requires `magento/*` packages, which aren't on Packagist, so the unit tests don't use `composer install`: `Test/bootstrap.php` autoloads the Magento-free classes and the vendored SDK. The protocol itself (multipart, polling, retries, packing) is tested in the SDK's repository.
+The module's `composer.json` requires `magento/*` packages, which aren't on Packagist, so the unit tests don't use `composer install`: `Test/bootstrap.php` autoloads the Magento-free classes, the vendored SDK and Plugin Health. The protocol itself (multipart, polling, retries, packing) is tested in the SDK's repository.
 
 CI (`.github/workflows/ci.yml`):
 
@@ -180,7 +191,7 @@ CI (`.github/workflows/ci.yml`):
 - **phpstan**: PHPStan on the module's code with Mage-OS's classes (see *Code quality and security checks*).
 - **magento**: downloads Mage-OS, installs it with MySQL 8.4 and Elasticsearch 8, adds the module in `app/code`, runs `demo/setup.php` twice (the second run must change nothing, and no password may appear in the log), translates the sample product, category, page and block with `supertext:translate` against the stand-in and checks the store values, URL key and rewrite, page copy with Page Builder markup, block directives, link table and accounts; a second run must skip everything. Then it checks the Commando Center: exactly one `installed` report (plugin, key check `ok`, callback URL; never the key) reached the stand-in's fake center, the state is in the `flag` table, and the storefront's ping (through PHP's built-in server and `phpserver/router.php`) answers the challenge with `Cache-Control: no-store` (400 for a bad challenge).
 
-Unit tests worth knowing: `LanguageCodesTest` (exact matches, no default regions, the setting wins, sources, `unsupported_language`), `ReportingTest` (the report and the stored state never contain the key, `installed` → `settings_saved`, `upgraded` only after a version change, a 401 reported once without a request to Supertext, nothing sent with reports off, storage errors swallowed, ping answers, `SUPERTEXT_VERSION_REPORTS`), `SupertextTest` (codes sent as given, one message per SDK error code).
+Unit tests worth knowing: `LanguageCodesTest` (exact matches, no default regions, the setting wins, sources, `unsupported_language`), `ReportingTest` (the report and the stored state never contain the key, the SDK version reported, a state stored by the SDK 0.2 reporter kept without a new report, `installed` → `settings_saved`, `upgraded` only after a version change, a 401 reported once without a request to Supertext, nothing sent with reports off, storage errors swallowed, ping answers, `SUPERTEXT_VERSION_REPORTS`), `SupertextTest` (codes sent as given, one message per SDK error code).
 
 ## Demo (Railway)
 

@@ -8,6 +8,7 @@ use PHPUnit\Framework\TestCase;
 use Supertext\Sdk\Http\HttpRequest;
 use Supertext\Sdk\Http\HttpResponse;
 use Supertext\Sdk\Http\HttpTransport;
+use Supertext\Sdk\Supertext;
 use Supertext\Translation\Api\Reporting;
 
 /**
@@ -99,6 +100,7 @@ final class ReportingTest extends TestCase
         self::assertSame(['name' => 'Magento-Supertext-Translation', 'version' => '1.0.0'], $report['plugin']);
         self::assertSame(['name' => 'Magento', 'version' => '2.4.8'], $report['system']);
         self::assertSame('PHP', $report['runtime']['name']);
+        self::assertSame(Supertext::SDK_VERSION, $report['sdk_version']);
         self::assertTrue($report['api_key_configured']);
         self::assertSame('ok', $report['api_key_check']['status']);
         self::assertSame(['url' => 'https://shop.example.ch/supertext/ping'], $report['callback']);
@@ -132,6 +134,18 @@ final class ReportingTest extends TestCase
         $changed = $this->reporting(version: '1.1.0')->onRequest('another-key');
         self::assertSame('invalid', $changed?->check?->status);
         self::assertSame('api_key_check', $changed?->event);
+    }
+
+    public function testAStateStoredByTheSdkReporterIsKept(): void
+    {
+        // As the Supertext SDK 0.2 reporter stored it: switching to Plugin Health sends no new `installed`.
+        $this->state = '{"reportedVersions":"1.0.0|2.4.8|' . PHP_VERSION . '","reportedKeyStatus":"ok","lastFailureAt":null,'
+            . '"keyCheck":{"status":"ok","checkedAt":"2026-10-14T08:00:00Z","httpStatus":200,"errorCode":null,"fingerprint":"' . hash('sha256', self::KEY) . '"}}';
+        $before = $this->state;
+
+        self::assertNull($this->reporting()->onRequest(self::KEY)?->event);
+        self::assertSame([], $this->calls);
+        self::assertSame($before, $this->state, 'stored in the same format');
     }
 
     public function testRejectedTranslationIsReportedOnce(): void

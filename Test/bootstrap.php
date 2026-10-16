@@ -7,8 +7,9 @@
 
 declare(strict_types=1);
 
-// The vendored Supertext SDK, as registration.php loads it in Magento.
+// The vendored Supertext SDK and Supertext Plugin Health, as registration.php loads them in Magento.
 require_once dirname(__DIR__) . '/lib/supertext-sdk/autoload.php';
+require_once dirname(__DIR__) . '/lib/supertext-plugin-health/autoload.php';
 
 spl_autoload_register(static function (string $class): void {
     $prefix = 'Supertext\\Translation\\';

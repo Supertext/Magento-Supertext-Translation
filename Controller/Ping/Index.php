@@ -19,7 +19,7 @@ use Supertext\Translation\Model\Reporting;
 /**
  * GET /supertext/ping?challenge=… — the public ping of the Supertext Commando Center: no login,
  * no form key, never cached (Cache-Control: no-store, so neither the full-page cache nor Varnish
- * keeps it). Answers exactly what the SDK's InstallationReporter::pingResponse() returns: 200 with
+ * keeps it). Answers exactly what Supertext Plugin Health's InstallationReporter::pingResponse() returns: 200 with
  * the challenge, 400 for a bad challenge, 404 while version reports are off.
  */
 class Index implements HttpGetActionInterface

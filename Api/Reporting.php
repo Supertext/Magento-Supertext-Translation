@@ -10,17 +10,22 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Api;
 
+use Supertext\PluginHealth\CallableKeyChecker;
+use Supertext\PluginHealth\InstallationReporter;
+use Supertext\PluginHealth\KeyCheck;
+use Supertext\PluginHealth\PingResponse;
+use Supertext\PluginHealth\ReporterResult;
+use Supertext\PluginHealth\ReporterState;
 use Supertext\Sdk\Http\HttpTransport;
-use Supertext\Sdk\V1\ApiKeyCheck;
-use Supertext\Sdk\V1\InstallationReporter;
-use Supertext\Sdk\V1\PingResponse;
-use Supertext\Sdk\V1\ReporterResult;
-use Supertext\Sdk\V1\ReporterState;
+use Supertext\Sdk\Supertext;
+use Supertext\Sdk\V1\Client;
+use Supertext\Sdk\V1\Protocol;
 
 /**
  * Version reports to the Supertext Commando Center, the automatic API key check and the ping
  * (Commando-Center-Supertext-Translation → docs/DEVELOPER.md → Report protocol). The protocol is
- * the SDK's InstallationReporter; this class only loads the reporter's state, runs one action and
+ * Supertext Plugin Health's InstallationReporter (lib/supertext-plugin-health), the key check the
+ * SDK's Client::checkApiKey(); this class only loads the reporter's state, runs one action and
  * stores the new state. Nothing here ever throws: reporting must never break a save or a translation.
  *
  * No Magento dependencies (Model\Reporting gives it the shop's values and storage).
@@ -47,8 +52,8 @@ final class Reporting
      * @param string|null $callbackUrl   the ping endpoint's absolute URL
      * @param callable(): ?string    $load the stored state (JSON), null if none
      * @param callable(string): void $save stores the state (JSON)
-     * @param HttpTransport|null $transport HTTP for the key check and the report; null: the SDK's CurlTransport
-     * @param string|null $reportUrl     tests: the center's URL (default: SUPERTEXT_REPORT_URL, else the SDK's)
+     * @param HttpTransport|null $transport tests: an SDK transport for the key check and the report; null: the SDK's and Plugin Health's CurlTransport
+     * @param string|null $reportUrl     tests: the center's URL (default: SUPERTEXT_REPORT_URL, else Plugin Health's)
      * @param (callable(): float)|null $now tests: wall-clock Unix seconds
      */
     public function __construct(
@@ -82,7 +87,7 @@ final class Reporting
         return !InstallationReporter::reportsEnabled(true) || InstallationReporter::reportsEnabled(false);
     }
 
-    /** The answer of the public ping endpoint (status, headers and body as the SDK returns them). */
+    /** The answer of the public ping endpoint (status, headers and body as Plugin Health returns them). */
     public static function ping(?string $challenge, bool $enabled): PingResponse
     {
         return InstallationReporter::pingResponse($challenge, self::PLUGIN_NAME, $enabled);
@@ -139,7 +144,7 @@ final class Reporting
     }
 
     /** The latest stored key check, for the settings page. */
-    public function lastCheck(): ?ApiKeyCheck
+    public function lastCheck(): ?KeyCheck
     {
         return $this->state()->keyCheck;
     }
@@ -152,11 +157,21 @@ final class Reporting
             pluginName: self::PLUGIN_NAME,
             pluginVersion: $this->pluginVersion,
             systemName: $this->systemName,
+            keyChecker: new CallableKeyChecker(
+                fn (string $apiKey) => (new Client(
+                    $apiKey,
+                    baseUrl: $this->apiBaseUrl,
+                    userAgent: self::PLUGIN_NAME . '/' . $this->pluginVersion,
+                    transport: $this->transport,
+                    now: $this->now,
+                ))->checkApiKey(),
+                [Protocol::class, 'apiKeyFingerprint'],
+            ),
             systemVersion: $this->systemVersion,
+            sdkVersion: Supertext::SDK_VERSION,
             callbackUrl: $this->callbackUrl,
             reportUrl: $this->reportUrl,
-            transport: $this->transport,
-            apiBaseUrl: $this->apiBaseUrl,
+            transport: $this->transport === null ? null : new ReportTransport($this->transport),
             now: $this->now,
         );
     }

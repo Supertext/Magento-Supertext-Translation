@@ -18,9 +18,9 @@ use Magento\Framework\UrlInterface;
 use Magento\Store\Model\Store;
 use Magento\Store\Model\StoreManagerInterface;
 use Psr\Log\LoggerInterface;
-use Supertext\Sdk\V1\ApiKeyCheck;
-use Supertext\Sdk\V1\PingResponse;
-use Supertext\Sdk\V1\ReporterResult;
+use Supertext\PluginHealth\KeyCheck;
+use Supertext\PluginHealth\PingResponse;
+use Supertext\PluginHealth\ReporterResult;
 use Supertext\Translation\Api\Reporting as Glue;
 
 /**
@@ -90,7 +90,7 @@ class Reporting
     }
 
     /** The latest stored key check, for the settings page. */
-    public function lastCheck(): ?ApiKeyCheck
+    public function lastCheck(): ?KeyCheck
     {
         return $this->glue()?->lastCheck();
     }
@@ -113,13 +113,13 @@ class Reporting
      *
      * @return array{ok: bool, status: string, text: string, html: string, time: string}
      */
-    public function describe(ApiKeyCheck $check): array
+    public function describe(KeyCheck $check): array
     {
         [$template, $arguments] = match ($check->status) {
-            ApiKeyCheck::OK          => ['API key checked: the connection to Supertext works.', []],
-            ApiKeyCheck::INVALID     => ['Supertext rejected the API key. Check that you copied the whole key, or generate a new one at %1 (requires the Admin role). No Supertext account yet? Create one at %2.', ['api', 'signup']],
-            ApiKeyCheck::MISSING     => ['No API key is set yet. No Supertext account yet? Create one at %1. Generate your API key at %2 (requires the Admin role).', ['signup', 'api']],
-            ApiKeyCheck::UNREACHABLE => ['The API key couldn\'t be checked because Supertext can\'t be reached. The settings are saved; check again later.', []],
+            KeyCheck::OK          => ['API key checked: the connection to Supertext works.', []],
+            KeyCheck::INVALID     => ['Supertext rejected the API key. Check that you copied the whole key, or generate a new one at %1 (requires the Admin role). No Supertext account yet? Create one at %2.', ['api', 'signup']],
+            KeyCheck::MISSING     => ['No API key is set yet. No Supertext account yet? Create one at %1. Generate your API key at %2 (requires the Admin role).', ['signup', 'api']],
+            KeyCheck::UNREACHABLE => ['The API key couldn\'t be checked because Supertext can\'t be reached. The settings are saved; check again later.', []],
             default                  => ['The API key couldn\'t be checked: Supertext answered with an error (%1). The settings are saved; check again later.', ['status']],
         };
 
@@ -149,7 +149,7 @@ class Reporting
         }
 
         return [
-            'ok'     => $check->status === ApiKeyCheck::OK,
+            'ok'     => $check->status === KeyCheck::OK,
             'status' => $check->status,
             'text'   => (string) __($template, ...$text),
             'html'   => strtr($this->escaper->escapeHtml((string) __($template, ...array_keys($html))), $html),
