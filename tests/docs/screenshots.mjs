@@ -56,7 +56,14 @@ async function session(email, password) {
   const go = async (url) => { await page.goto(url); await page.waitForLoadState('networkidle') }
   const menu = async (item) => page.locator(`li.${item} > a`).first().getAttribute('href')
   const grid = async () => { await page.locator('.data-grid tbody tr.data-row').first().waitFor(); await page.waitForTimeout(800) }
-  return { page, shot, box, go, menu, grid }
+  // Dates (Created, Modified, Last Updated At) change with every run: leave those grid columns out.
+  const hideDates = () => page.evaluate(() => {
+    const table = [...document.querySelectorAll('.data-grid')].find((t) => t.offsetParent)
+    const heads = [...table.querySelectorAll('thead th')]
+    const drop = heads.map((th, i) => (/^(Created|Modified|Last Updated At)$/.test(th.textContent.replace(/\s+/g, ' ').trim()) ? i : -1)).filter((i) => i >= 0)
+    for (const row of table.querySelectorAll('tr')) drop.forEach((i) => { if (row.children[i]) row.children[i].style.display = 'none' })
+  })
+  return { page, shot, box, go, menu, grid, hideDates }
 }
 
 // --- Installation guide (Administrators): enters the API key the user guide needs ------
@@ -95,7 +102,7 @@ if (!only || only.has('admin')) {
 
 // --- User guide (editor account) -------------------------------------------------------
 if (!only || only.has('editor')) {
-  const { page, shot, box, go, menu, grid } = await session(process.env.DEMO_EDITOR_EMAIL, process.env.DEMO_EDITOR_PASSWORD)
+  const { page, shot, box, go, menu, grid, hideDates } = await session(process.env.DEMO_EDITOR_EMAIL, process.env.DEMO_EDITOR_PASSWORD)
   const productsUrl = await menu('item-catalog-products')
   const categoriesUrl = await menu('item-catalog-categories')
   const pagesUrl = await menu('item-cms-page')
@@ -104,6 +111,7 @@ if (!only || only.has('editor')) {
   await go(productsUrl)
   await grid()
   for (const row of await page.locator('tr.data-row', { hasText: 'ST-DEMO-' }).all()) await row.locator('input[type=checkbox]').check({ force: true })
+  await hideDates()
   await page.locator('button.action-select', { hasText: 'Actions' }).first().click()
   const item = page.locator('.action-menu-item:visible', { hasText: 'Translate with Supertext' }).first()
   await item.waitFor()
@@ -148,13 +156,7 @@ if (!only || only.has('editor')) {
     return rows.length >= 4 && rows.every((r) => r.textContent.includes('delivery-and-returns'))
   })
   await page.waitForTimeout(1500)
-  // The Created and Modified dates change with every run: leave those columns out.
-  await page.evaluate(() => {
-    const table = [...document.querySelectorAll('.data-grid')].find((t) => t.offsetParent)
-    const heads = [...table.querySelectorAll('thead th')]
-    const drop = heads.map((th, i) => (/^(Created|Modified)$/.test(th.textContent.trim()) ? i : -1)).filter((i) => i >= 0)
-    for (const row of table.querySelectorAll('tr')) drop.forEach((i) => { if (row.children[i]) row.children[i].style.display = 'none' })
-  })
+  await hideDates()
   await shot('pages-translated', await box('.data-grid:visible'))
   await page.setViewportSize({ width: 1280, height: 900 })
 

@@ -274,7 +274,7 @@ BASE_URL=http://localhost:8091/admin DEMO_ADMIN_EMAIL=… DEMO_ADMIN_PASSWORD=�
   DEMO_EDITOR_EMAIL=… DEMO_EDITOR_PASSWORD=… node screenshots.mjs
 ```
 
-`ONLY=admin` or `ONLY=editor` runs one part. Run it in the same commit as any UI change the images show. The E2E workflow runs it on every push to `main` too and opens a pull request when the images changed (see *End-to-end tests*). So that the images only change when the UI does, the script shows a fixed time in the key check's *Checked:* line, leaves the *Created* and *Modified* columns out of the pages grid, and replaces the demo's local address (the ping address) with `https://shop.example.com`. The stand-in logs segments it has no translation for as `{"unknown": …}`; the workflow warns about them.
+`ONLY=admin` or `ONLY=editor` runs one part. Run it in the same commit as any UI change the images show. The E2E workflow runs it on every push to `main` too and opens a pull request when the images changed (see *End-to-end tests*). So that the images only change when the UI does, the script shows a fixed time in the key check's *Checked:* line, leaves the date columns (*Created*, *Modified*, *Last Updated At*) out of the grids, and replaces the demo's local address (the ping address) with `https://shop.example.com`. The stand-in logs segments it has no translation for as `{"unknown": …}`; the workflow warns about them.
 
 ## Code quality and security checks
 
