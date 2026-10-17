@@ -37,6 +37,13 @@ async function session(email, password) {
   const css = '*{animation:none!important;transition:none!important;caret-color:transparent!important} .admin__data-grid-loading-mask,.loading-mask{display:none!important} .message-system,.admin__page-nav-title-messages{display:none!important}'
   const shot = async (name, clip) => {
     await page.addStyleTag({ content: css })
+    await page.evaluate(([origin]) => {
+      // Times change with every run, so the images would too: show a fixed one.
+      for (const el of document.querySelectorAll('#supertext-key-check small')) el.textContent = el.textContent.replace(/^([^:]+:).*$/s, '$1 Oct 1, 2026, 9:00:00 AM')
+      // No local URLs in the docs: the demo's own address becomes an example shop.
+      const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT)
+      while (walker.nextNode()) if (walker.currentNode.nodeValue.includes(origin)) walker.currentNode.nodeValue = walker.currentNode.nodeValue.replaceAll(origin, 'https://shop.example.com')
+    }, [new URL(B).origin])
     await page.waitForTimeout(400)
     await page.screenshot({ path: `${OUT}/${name}.png`, ...(clip ? { clip } : {}) })
     console.log(`  ${name}.png`)
@@ -127,9 +134,18 @@ if (!only || only.has('editor')) {
   await go(pagesUrl)
   await grid()
   await page.setViewportSize({ width: 1280, height: 1300 })
-  await page.fill('.data-grid-search-control', 'delivery-and-returns')
+  // MySQL's full-text search reads the hyphens of "delivery-and-returns" as "without": search one word.
+  await page.fill('.data-grid-search-control', 'returns')
   await page.keyboard.press('Enter')
-  await page.waitForTimeout(2500)
+  await page.locator('tr.data-row', { hasText: 'delivery-and-returns' }).first().waitFor()
+  await page.waitForTimeout(1500)
+  // The Created and Modified dates change with every run: leave those columns out.
+  await page.evaluate(() => {
+    const table = [...document.querySelectorAll('.data-grid')].find((t) => t.offsetParent)
+    const heads = [...table.querySelectorAll('thead th')]
+    const drop = heads.map((th, i) => (/^(Created|Modified)$/.test(th.textContent.trim()) ? i : -1)).filter((i) => i >= 0)
+    for (const row of table.querySelectorAll('tr')) drop.forEach((i) => { if (row.children[i]) row.children[i].style.display = 'none' })
+  })
   await shot('pages-translated', await box('.data-grid:visible'))
   await page.setViewportSize({ width: 1280, height: 900 })
 
