@@ -29,12 +29,16 @@ async function session(email, password) {
   if (!email || !password) throw new Error('Set the DEMO_* email and password variables.')
   const page = await (await browser.newContext({ viewport: { width: 1280, height: 900 } })).newPage()
   page.setDefaultTimeout(180000)
+  const css = '*{animation:none!important;transition:none!important;caret-color:transparent!important} .admin__data-grid-loading-mask,.loading-mask{display:none!important} .message-system,.admin__page-nav-title-messages{display:none!important}'
+  // On every page before measuring: hidden system messages would otherwise move the crop.
+  await page.addInitScript((style) => document.addEventListener('DOMContentLoaded', () => {
+    const tag = document.createElement('style'); tag.textContent = style; document.head.appendChild(tag)
+  }), css)
   await page.goto(`${B}/`)
   await page.fill('#username', email)
   await page.fill('#login', password)
   await page.click('.action-login')
   await page.waitForLoadState('networkidle')
-  const css = '*{animation:none!important;transition:none!important;caret-color:transparent!important} .admin__data-grid-loading-mask,.loading-mask{display:none!important} .message-system,.admin__page-nav-title-messages{display:none!important}'
   const shot = async (name, clip) => {
     await page.addStyleTag({ content: css })
     await page.evaluate(([origin]) => {
@@ -134,10 +138,15 @@ if (!only || only.has('editor')) {
   await go(pagesUrl)
   await grid()
   await page.setViewportSize({ width: 1280, height: 1300 })
-  // MySQL's full-text search reads the hyphens of "delivery-and-returns" as "without": search one word.
-  await page.fill('.data-grid-search-control', 'returns')
-  await page.keyboard.press('Enter')
-  await page.locator('tr.data-row', { hasText: 'delivery-and-returns' }).first().waitFor()
+  // Filter by URL key (the keyword search doesn't find "delivery-and-returns": MySQL's
+  // full-text search reads the hyphens as "without").
+  await page.locator('button[data-action="grid-filter-expand"]').first().click()
+  await page.locator('.admin__data-grid-filters input[name="identifier"]').fill('delivery-and-returns')
+  await page.locator('button[data-action="grid-filter-apply"]').first().click()
+  await page.waitForFunction(() => {
+    const rows = [...document.querySelectorAll('.data-grid tr.data-row')]
+    return rows.length >= 4 && rows.every((r) => r.textContent.includes('delivery-and-returns'))
+  })
   await page.waitForTimeout(1500)
   // The Created and Modified dates change with every run: leave those columns out.
   await page.evaluate(() => {
