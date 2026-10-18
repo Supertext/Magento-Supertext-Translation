@@ -23,9 +23,9 @@ use Supertext\Sdk\V1\SupertextException as SdkException;
  *
  * A store view's *Supertext language* (Stores → Configuration → Supertext → Translation, store
  * view scope) wins; otherwise a locale that equals a Supertext code apart from case and "_"/"-" is
- * used ("de_CH" → "de-CH"); anything else is the error `unsupported_language` and nothing is sent.
- * There are no default regions: a store view with the locale "es_ES" or "nl_NL" needs its Supertext
- * language ("es", "nl"). The same setting serves the source: a mapped "de-CH" is sent as "de".
+ * used ("de_CH" → "de-CH"); else, since SDK 0.4.0, the SDK's default target ("es_ES" → "es",
+ * "zh_Hans_CN" → "zh-Hans"); anything else is the error `unsupported_language` and nothing is sent.
+ * The same setting serves the source: a mapped "de-CH" is sent as "de".
  *
  * No Magento dependencies.
  */

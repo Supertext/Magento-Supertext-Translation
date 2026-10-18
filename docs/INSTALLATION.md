@@ -86,7 +86,7 @@ Each store view needs a **Supertext language**. Supertext accepts exactly these 
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-A store view whose **locale** already is one of these codes, apart from upper/lower case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`, `it_CH` → `it-CH`, `pt_BR` → `pt-BR`), uses it as it is: nothing to set. Every other locale needs its Supertext language: Magento's `es_ES`, `nl_NL`, `sl_SI`, `nb_NO`, `zh_Hans_CN` or `de_LU` aren't Supertext codes, and the module **never guesses** (whether a locale means `es` or something else, or which German a `de_LU` shop wants, is your decision).
+A store view whose **locale** already is one of these codes, apart from upper/lower case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`, `it_CH` → `it-CH`, `pt_BR` → `pt-BR`), uses it as it is: nothing to set. Since Supertext SDK 0.4.0, locales with an obvious default also need nothing: a region of a language Supertext offers without one becomes the bare code (`es_ES` → `es`, `nl_NL` → `nl`, `sl_SI` → `sl`, `nb_NO` → `nb`), `zh_Hans_CN` → `zh-Hans`. Everything else needs its Supertext language (e.g. `de_LU`, `en_IE`, `fr_BE`): which German a `de_LU` shop wants is your decision, and the module guesses nothing beyond these defaults.
 
 *Stores → Configuration → Supertext → Translation → Language*:
 
@@ -115,6 +115,15 @@ Without `--store`, every store view in another language than the default locale 
 ## Who can translate
 
 Admin users whose role allows **Translate with Supertext** (*System → Permissions → User Roles → Role Resources*) **and** editing the item: *Catalog → Inventory → Products* for products, *Catalog → Inventory → Categories* for categories, *Content → Elements → Pages → Save Page* for pages, *Content → Elements → Blocks* for blocks. The configuration needs *Stores → Settings → Configuration → Supertext Translation*. The *Administrators* role has all of these.
+
+Export for translation and Import translation (on the same page) need the same rights: **Translate with Supertext** and editing the content type; an import reports items of a type the user may not edit and leaves them alone.
+
+## Export for translation and Import translation
+
+Nothing to configure: the *Translate with Supertext* page's **Export for translation** and **Import translation** use the same store views, Supertext languages, rules and rights as translating with Supertext, without calling the Supertext API.
+
+- **Upload size:** at most 10 MB per file. PHP's `upload_max_filesize` and `post_max_size` must allow that (their defaults, 2 MB and 8 MB, are lower: raise them to `10M`/`12M` if editors import large files). The file is read in memory; nothing is stored besides PHP's own temporary upload file.
+- A store view without a Supertext language doesn't block the export: it is written into the file with its locale (`es_AR` → `es-AR`).
 
 ## Interface languages
 

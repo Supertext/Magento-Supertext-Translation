@@ -117,7 +117,7 @@ class Config
 
     /**
      * Sent to Supertext as target language: the store view's Supertext language, else its locale when
-     * that equals a Supertext code ("de_CH" → "de-CH"). No guessing, no default regions.
+     * that equals a Supertext code ("de_CH" → "de-CH"), else the SDK's default target ("es_ES" → "es").
      *
      * @throws SupertextException unsupported_language (nothing is sent)
      */

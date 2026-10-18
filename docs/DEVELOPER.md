@@ -12,7 +12,7 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 ├── lib/supertext-plugin-health/          Supertext Plugin Health for PHP, vendored (don't edit; see *Supertext Plugin Health*)
 ├── Api/                                  no Magento classes (unit-tested on their own)
 │   ├── Supertext.php                     the SDK client with the module's defaults, SDK errors → messages
-│   ├── LanguageCodes.php                 locales → Supertext codes (the SDK's Languages + the store view setting; no guessing)
+│   ├── LanguageCodes.php                 locales → Supertext codes (the SDK's Languages + the store view setting; only the SDK's defaults)
 │   ├── Reporting.php                     Commando Center: Plugin Health's InstallationReporter with the module's state
 │   ├── ReportTransport.php               Plugin Health's HTTP over an SDK transport (the tests' fake)
 │   └── SupertextException.php            translatable message (English template, %1 parameters, detail)
@@ -25,9 +25,11 @@ Magento 2 module `Supertext_Translation` (PHP 8.2+, Magento Open Source / Adobe 
 │   │   ├── Directives.php                protects {{…}} directives in rich text (no Magento classes)
 │   │   ├── EavTranslator.php             products, categories: store-view values, URL key, rewrites
 │   │   ├── CmsTranslator.php             pages, blocks: copies per store view + supertext_translation_link
-│   │   └── Translator.php                entry point for the admin and the console command
+│   │   ├── Translator.php                entry point for the admin and the console command (also importTexts() for files)
+│   │   ├── FileExchange.php, FileItems.php   Export for translation / Import translation (no Magento classes)
+│   │   └── TranslationFileItems.php      FileItems for Magento: Translator, store views, ACL
 │   └── Config/Backend|Source/            API key (encrypted), Supertext language (list + saved code), option lists
-├── Controller/Adminhtml/Translate/       Index (the page), Mass (grid mass action → page), Run (JSON)
+├── Controller/Adminhtml/Translate/       Index (the page), Mass (grid mass action → page), Run (JSON), Export (file download), Import (JSON)
 ├── Controller/Adminhtml/System/Test.php  "Test connection" (the API key check)
 ├── Controller/Ping/Index.php             public GET /supertext/ping (Commando Center)
 ├── Observer/                             SettingsSaved (key check + report after a save), SettingsPage (onRequest)
@@ -54,6 +56,16 @@ Entry points:
 | Command line | `supertext:translate <product|category|cms_page|cms_block> <ids…> [--store=<code or id>]… [--overwrite]` |
 
 The translate page (`Block\Adminhtml\Translate` + `translate.phtml`) shows the items and, per store view, a state from `FieldPlanner::state()`. Its script then posts to `Run` once per item and store view, one after the other (Supertext rate-limits per second), with `form_key`, `type`, `id`, `store`, `overwrite`. `Run` checks the ACL resource of the type (`Magento_Catalog::products`, `Magento_Catalog::categories`, `Magento_Cms::save`, `Magento_Cms::block`) on top of `Supertext_Translation::translate`.
+
+### Translation files
+
+*Export for translation* and *Import translation* on the translate page: the items' texts as an XLIFF 1.2 or HTML file, translated outside the API (a CAT tool, a translator, Supertext's web app), and the translated file written back. File formats, checksums and the safety checks of imported files are the SDK's `Supertext\Sdk\Files\TranslationFiles` (SDK 0.5.0, integration guide → *Translation files: XLIFF and HTML*); the module only collects, finds and writes back.
+
+- **Core** (`Model/Translation/FileExchange.php`, no Magento classes, `Test/Unit/FileExchangeTest.php`): `export()` builds one SDK `FileJob` per item and store view from exactly the segments an API translation sends (`FileItems::segments()` = `Translator::fileSegments()` = `FieldPlanner::segments()` of `EavTranslator::planner()` / `CmsTranslator::planner()`: the same fields, rich text with its `{{…}}` directives protected, existing translations left out unless *overwrite*); keys are the attribute codes / CMS fields. XLIFF holds every selected item and store view; HTML exactly one item in one store view. `import()` refuses files over 10,000,000 bytes, `read()`s the file and per job checks `plugin` (`Magento-Supertext-Translation`, else *another system*), parses `reference` (else *no longer exists*), checks the store view exists and the admin's ACL for the type, loads the item (missing → *no longer exists*), collects the current segments the same way and calls `importTranslations()`. `ok` results (and `source_changed` with *include changed*) go through `Translator::importTexts()`, which runs `EavTranslator::translate()` / `CmsTranslator::translate()` with a closure returning the file's texts instead of the SDK client: the same write-back (store-view values via `saveAttribute`, URL key and rewrites, CMS copies per store view and `supertext_translation_link`, *disabled* for review). `untranslated`, `invalid_markup` and `missing` are only counted; *kept* counts the file's fields that got a translation since the export.
+- **Reference** of a job: `<type>:<id>:store-<store view id>`, e.g. `product:42:store-2`, `cms_page:5:store-3` (`FileExchange::reference()` / `parseReference()`; ids, never titles or store codes).
+- **Languages in the file:** source = `Config::sourceCodeOrNull()`, target = `Config::targetCodeOrNull($storeId)`; a store view without a Supertext language is written with its locale and `-` (`es_AR` → `es-AR`), so it never blocks the export.
+- **File names:** `magento-<type>-<id>-store-<id>.xlf` / `.html`, `magento-<type>-<id>.xlf` for several store views, `magento-<type>-<id>-and-<n>-more.xlf` for several items. `Content-Type` `application/x-xliff+xml` / `text/html; charset=utf-8`, `Content-Disposition: attachment`.
+- **Controllers:** `Export` (POST form with `form_key`, `type`, `ids`, `stores[]`, `format`, `overwrite`; the page's script copies the ticked store views and *Overwrite* into the form) answers the file or redirects back with the error; `Import` (POST `multipart/form-data` with `form_key`, `file`, `include_changed`, `overwrite`, sent by the page's script) checks the upload size before reading, reads PHP's temporary upload in memory and answers a JSON summary per job, which the script shows. Both need `Supertext_Translation::translate`; `Export` also the type's ACL, `Import` the ACL of each job's type.
 
 ### Languages
 
@@ -135,7 +147,7 @@ Supertext accepts exactly the codes its `GET features` lists (the SDK's `Superte
 
 `Api/LanguageCodes.php` (unit-tested, no Magento classes) turns a store view into Supertext codes **without guessing**, with the store view's *Supertext language* (`supertext/language/code`, store scope; a select of `LanguageCodes::targets()` via `Model\Config\Source\TargetLanguage`) as the SDK's mapping:
 
-- **Target** (`Config::targetCode()`): the setting (sent as it is, even a code the SDK's list doesn't know yet); else the locale when it equals a Supertext code apart from case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`); else `SupertextException` from the SDK code `unsupported_language` (*The language "%1" has no Supertext language yet …*), and nothing is sent. No default regions: `es_ES`, `nl_NL`, `sl_SI`, `zh_Hans_CN` need the setting. `Translator` resolves both codes before it creates the client.
+- **Target** (`Config::targetCode()`): the setting (sent as it is, even a code the SDK's list doesn't know yet); else the locale when it equals a Supertext code apart from case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`); else (since SDK 0.4.0) the SDK's default target: `es_ES` → `es`, `nl_NL` → `nl`, `sl_SI` → `sl`, `zh_Hans_CN` → `zh-Hans`, a bare `de` → `de-DE`; else `SupertextException` from the SDK code `unsupported_language` (*The language "%1" has no Supertext language yet …*), and nothing is sent (`de_LU`, `en_IE`, `fr_BE`, `sr_RS` need the setting). `Translator` resolves both codes before it creates the client.
 - **Source** (`Config::sourceCode()`): the default locale's language (`en_US`, `en_GB` → `en`); one mapping serves both directions, so the default store view's setting counts when that store view has the default locale (`de-CH` → `de`). Unknown: `unsupported_language` with `sourceLang`.
 - `Config::storeViews()` gives each store view's `target` (null when unmapped), which the *Store views* overview (`Block\Adminhtml\System\Config\LanguageOverview`, default scope), the store-view field's note (`LanguageSelect`, which also keeps a saved code that isn't in the list as an extra option) and the translate page (unmapped store views can't be ticked) show.
 - Tone: `Config::tone()` sends `more`/`less` only where `LanguageCodes::supportsPoliteness()` is true; elsewhere `default`, and the overview says so.
@@ -191,7 +203,7 @@ CI (`.github/workflows/ci.yml`):
 - **phpstan**: PHPStan on the module's code with Mage-OS's classes (see *Code quality and security checks*).
 - **magento**: downloads Mage-OS, installs it with MySQL 8.4 and Elasticsearch 8, adds the module in `app/code`, runs `demo/setup.php` twice (the second run must change nothing, and no password may appear in the log), translates the sample product, category, page and block with `supertext:translate` against the stand-in and checks the store values, URL key and rewrite, page copy with Page Builder markup, block directives, link table and accounts; a second run must skip everything. Then it checks the Commando Center: exactly one `installed` report (plugin, key check `ok`, callback URL; never the key) reached the stand-in's fake center, the state is in the `flag` table, and the storefront's ping (through PHP's built-in server and `phpserver/router.php`) answers the challenge with `Cache-Control: no-store` (400 for a bad challenge).
 
-Unit tests worth knowing: `LanguageCodesTest` (exact matches, no default regions, the setting wins, sources, `unsupported_language`), `ReportingTest` (the report and the stored state never contain the key, the SDK version reported, a state stored by the SDK 0.2 reporter kept without a new report, `installed` → `settings_saved`, `upgraded` only after a version change, a 401 reported once without a request to Supertext, nothing sent with reports off, storage errors swallowed, ping answers, `SUPERTEXT_VERSION_REPORTS`), `SupertextTest` (codes sent as given, one message per SDK error code).
+Unit tests worth knowing: `FileExchangeTest` (translation files: reference and file names, export with the planner's segments and the codes, HTML with one item and one store view, errors, import with another plugin, an unknown reference or store view, no ACL, `ok` written through the planner with directives unprotected, `source_changed` only with the option, `untranslated`/`invalid_markup`/`missing` never written, kept fields, a save error, files too large, invalid or without metadata), `LanguageCodesTest` (exact matches, only the SDK's default targets, the setting wins, sources, `unsupported_language`), `ReportingTest` (the report and the stored state never contain the key, the SDK version reported, a state stored by the SDK 0.2 reporter kept without a new report, `installed` → `settings_saved`, `upgraded` only after a version change, a 401 reported once without a request to Supertext, nothing sent with reports off, storage errors swallowed, ping answers, `SUPERTEXT_VERSION_REPORTS`), `SupertextTest` (codes sent as given, one message per SDK error code).
 
 ## Demo (Railway)
 
@@ -294,6 +306,7 @@ The release attaches `magento-supertext-translation-X.Y.Z.zip`, built by `./buil
 
 ## Known limitations / roadmap
 
+- Translation files: no console commands for export and import yet; directives (`{{…}}`) in rich text reach translators as protected inline tags in XLIFF and as `translate="no"` spans in HTML, but a translator who edits them changes them.
 - The source is always the default values (*All Store Views*); translating from one store view into another isn't offered.
 - Not translated yet: other product attributes (custom text attributes, dropdown option labels), image labels, custom options, widget instances, emails.
 - Subcategory URL paths in a store view follow a translated parent only once the subcategory is translated too.

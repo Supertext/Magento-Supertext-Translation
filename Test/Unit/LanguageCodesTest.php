@@ -24,18 +24,23 @@ final class LanguageCodesTest extends TestCase
         self::assertSame('zh-Hans', LanguageCodes::target('zh_hans'));
     }
 
-    public function testNoDefaultRegionsAndNoGuessing(): void
+    public function testOnlyTheSdksDefaultsAreGuessed(): void
     {
-        foreach (['de', 'es_ES', 'nl_NL', 'zh_Hans_CN', 'sl_SI', 'xx_YY'] as $locale) {
+        // Since SDK 0.4.0 a target with an obvious default gets it.
+        foreach (['de' => 'de-DE', 'es_ES' => 'es', 'nl_NL' => 'nl', 'zh_Hans_CN' => 'zh-Hans', 'sl_SI' => 'sl'] as $locale => $code) {
+            self::assertSame($code, LanguageCodes::targetOrNull($locale), $locale);
+        }
+
+        foreach (['de_LI', 'en_IE', 'fr_BE', 'sr_RS', 'xx_YY'] as $locale) {
             self::assertNull(LanguageCodes::targetOrNull($locale), $locale);
         }
 
         try {
-            LanguageCodes::target('es_ES');
+            LanguageCodes::target('fr_BE');
             self::fail('expected unsupported_language');
         } catch (SupertextException $e) {
             self::assertStringStartsWith('The language "%1" has no Supertext language yet.', $e->template());
-            self::assertSame(['es_ES'], $e->parameters());
+            self::assertSame(['fr_BE'], $e->parameters());
             self::assertStringContainsString('Stores → Configuration → Supertext → Translation → Language', $e->getMessage());
         }
     }
