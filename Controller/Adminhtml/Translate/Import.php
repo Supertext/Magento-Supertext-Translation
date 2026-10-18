@@ -13,6 +13,7 @@ namespace Supertext\Translation\Controller\Adminhtml\Translate;
 use Magento\Backend\App\Action;
 use Magento\Backend\App\Action\Context;
 use Magento\Framework\App\Action\HttpPostActionInterface;
+use Magento\Framework\App\Request\Http as HttpRequest;
 use Magento\Framework\Controller\Result\Json;
 use Magento\Framework\Controller\ResultFactory;
 use Magento\Store\Model\StoreManagerInterface;
@@ -45,7 +46,7 @@ class Import extends Action implements HttpPostActionInterface
         /** @var Json $json */
         $json    = $this->resultFactory->create(ResultFactory::TYPE_JSON);
         $request = $this->getRequest();
-        $file    = $request->getFiles('file');
+        $file    = $request instanceof HttpRequest ? $request->getFiles('file') : null;
         $file    = \is_array($file) ? $file : [];
         $error   = (int) ($file['error'] ?? UPLOAD_ERR_NO_FILE);
 
