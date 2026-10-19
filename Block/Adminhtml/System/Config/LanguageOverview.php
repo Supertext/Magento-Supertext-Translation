@@ -15,12 +15,14 @@ use Magento\Config\Block\System\Config\Form\Field;
 use Magento\Framework\Data\Form\Element\AbstractElement;
 use Magento\Framework\Locale\ResolverInterface;
 use Supertext\Translation\Api\LanguageCodes;
+use Supertext\Translation\Api\Supertext;
 use Supertext\Translation\Model\Config;
 
 /**
  * Default scope: every store view with its locale and the Supertext language it is translated into,
  * (from the setting, from the locale or the default for the locale), or *Not mapped* (no default for
- * the locale) with a link to its store view scope, and a note where the tone isn't offered.
+ * the locale) with a link to its store view scope, *Translation review* where it is on, and a note
+ * where the tone isn't offered.
  */
 class LanguageOverview extends Field
 {
@@ -45,6 +47,7 @@ class LanguageOverview extends Field
         try {
             $views  = $this->config->storeViews();
             $source = $this->config->sourceCodeOrNull();
+            $review = Supertext::reviewBaseUrl($this->config->reviewUrl(), $this->config->baseUrl()) !== null;
         } catch (\Throwable) {
             return '';
         }
@@ -65,7 +68,8 @@ class LanguageOverview extends Field
                         'default' => ' <span style="color:#6c868e">(' . $this->escapeHtml(__('default for the locale')) . ')</span>',
                         default   => '',
                     }
-                    . ($view['sameLanguage'] ? ' <span style="color:#6c868e">· ' . $this->escapeHtml(__('Source language')) . '</span>' : '');
+                    . ($view['sameLanguage'] ? ' <span style="color:#6c868e">· ' . $this->escapeHtml(__('Source language')) . '</span>' : '')
+                    . ($view['review'] && $review ? ' <span style="color:#6c868e">· ' . $this->escapeHtml(__('Translation review')) . '</span>' : '');
             }
 
             if ($view['toneIgnored']) {

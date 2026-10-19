@@ -109,6 +109,8 @@ Errors: *This file isn't a valid XLIFF or HTML translation file.*, *This file wa
 
 Products and categories: open the item, switch the scope to the store view and read the fields; the translation is live as soon as it is saved. Pages and blocks: open the copy (**Open** in the result, or the list). To check in the shop, switch the store view in the shop's language switcher.
 
+**Translation review:** if your administrator turned on *Translation review* for a store view, reviewers (your colleagues or Supertext linguists) check and correct the translations on the storefront. Their corrections come into Magento the next time you translate the items into that store view: after a review, translate them again with **Overwrite existing translations**. Texts reviewed once keep their corrected wording in later translations.
+
 ## When something goes wrong
 
 The table shows the reason for each item and store view that fails; the other ones still run.

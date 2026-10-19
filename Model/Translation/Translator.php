@@ -10,9 +10,9 @@ declare(strict_types=1);
 
 namespace Supertext\Translation\Model\Translation;
 
-use Supertext\Sdk\V1\Client;
 use Supertext\Sdk\V1\SupertextException as SdkException;
 use Supertext\Translation\Api\Supertext;
+use Supertext\Translation\Api\SupertextClients;
 use Supertext\Translation\Api\SupertextException;
 use Supertext\Translation\Model\Config;
 use Supertext\Translation\Model\Reporting;
@@ -20,7 +20,7 @@ use Supertext\Translation\Model\Reporting;
 /** One entry point for the translate page, its endpoint and the console command. */
 class Translator
 {
-    private ?Client $client = null;
+    private ?SupertextClients $clients = null;
 
     public function __construct(
         private readonly Config $config,
@@ -69,10 +69,12 @@ class Translator
         $target = $this->config->targetCode($storeId);
         $source = $this->config->sourceCode();
 
-        $this->client ??= $this->config->client();
+        // Store views with *Translation review* on go through the review service (same key, same protocol).
+        $this->clients ??= $this->config->clients();
+        $client = $this->clients->forReview($this->config->review($storeId));
 
         try {
-            return $this->handler($type)->translate($this->client, $type, $id, $storeId, $overwrite);
+            return $this->handler($type)->translate($client, $type, $id, $storeId, $overwrite);
         } catch (SdkException $e) {
             if ($e->errorCode === SdkException::AUTHENTICATION_FAILURE) {
                 $this->reporting->authenticationFailed((int) ($e->status ?? 401));
