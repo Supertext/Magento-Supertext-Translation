@@ -117,7 +117,8 @@ class Config
 
     /**
      * Sent to Supertext as target language: the store view's Supertext language, else its locale when
-     * that equals a Supertext code ("de_CH" → "de-CH"), else the SDK's default target ("es_ES" → "es").
+     * that equals a Supertext code ("de_CH" → "de-CH"), else the SDK's default for it ("es_ES" → "es",
+     * "zh_Hans_CN" → "zh-Hans"). Locales without a default ("en_IE", "de_LI") need the setting.
      *
      * @throws SupertextException unsupported_language (nothing is sent)
      */
@@ -126,7 +127,7 @@ class Config
         return LanguageCodes::target($this->locale($storeId), $this->languageSetting($storeId));
     }
 
-    /** The target code, or null when the store view has no Supertext language. */
+    /** The target code, or null when the store view has neither a Supertext language nor a default. */
     public function targetCodeOrNull(int $storeId): ?string
     {
         return LanguageCodes::targetOrNull($this->locale($storeId), $this->languageSetting($storeId));
@@ -193,9 +194,11 @@ class Config
 
     /**
      * Store views that can be translated into, with their language. `target` is null for a store
-     * view without a Supertext language (it can't be translated into).
+     * view with neither a Supertext language nor a default for its locale (it can't be translated
+     * into); `origin` says where the target comes from: "setting", "locale" (the locale is a
+     * Supertext code) or "default" (the SDK's default for the locale).
      *
-     * @return list<array{id: int, name: string, code: string, website: string, locale: string, setting: string, target: ?string, active: bool, sameLanguage: bool, tone: string, toneIgnored: bool}>
+     * @return list<array{id: int, name: string, code: string, website: string, locale: string, setting: string, target: ?string, origin: string, active: bool, sameLanguage: bool, tone: string, toneIgnored: bool}>
      */
     public function storeViews(): array
     {
@@ -214,6 +217,7 @@ class Config
                 'locale'       => $this->locale($id),
                 'setting'      => $this->languageSetting($id),
                 'target'       => $target,
+                'origin'       => $this->languageSetting($id) !== '' ? 'setting' : (LanguageCodes::isExactMatch($this->locale($id)) ? 'locale' : 'default'),
                 'active'       => (bool) $store->getIsActive(),
                 'sameLanguage' => $target !== null && $source !== null && LanguageCodes::sourceOrNull($target) === $source,
                 'tone'         => $tone,

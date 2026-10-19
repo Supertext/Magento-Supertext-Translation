@@ -77,7 +77,7 @@ The default values are taken to be in the default locale (*Default Config* scope
 
 ### Supertext language and tone
 
-Each store view needs a **Supertext language**. Supertext accepts exactly these target codes (from its `features` list, October 2026):
+Each store view is translated into a **Supertext language**. Supertext accepts exactly these target codes (from its `features` list, October 2026):
 
 | Language | Supertext codes |
 | --- | --- |
@@ -86,18 +86,34 @@ Each store view needs a **Supertext language**. Supertext accepts exactly these 
 | Swiss German | `gsw-u-sd-chzh` (Zurich), `gsw-u-sd-chbe` (Bern) |
 | All others, without region | `bg`, `cs`, `da`, `el`, `es`, `fi`, `hr`, `hu`, `ja`, `ko`, `nb`, `nl`, `pl`, `rm`, `ru`, `sk`, `sl`, `sq`, `sv`, `tr` |
 
-A store view whose **locale** already is one of these codes, apart from upper/lower case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`, `it_CH` → `it-CH`, `pt_BR` → `pt-BR`), uses it as it is: nothing to set. Since Supertext SDK 0.4.0, locales with an obvious default also need nothing: a region of a language Supertext offers without one becomes the bare code (`es_ES` → `es`, `nl_NL` → `nl`, `sl_SI` → `sl`, `nb_NO` → `nb`), `zh_Hans_CN` → `zh-Hans`. Everything else needs its Supertext language (e.g. `de_LU`, `en_IE`, `fr_BE`): which German a `de_LU` shop wants is your decision, and the module guesses nothing beyond these defaults.
+Without a setting, a store view uses:
+
+1. its **locale**, when that already is one of these codes apart from upper/lower case and `_`/`-` (`de_CH` → `de-CH`, `fr_FR` → `fr-FR`, `it_CH` → `it-CH`, `pt_BR` → `pt-BR`);
+2. else the **default** of the Supertext SDK, where one is obvious:
+
+| Locale | Default |
+| --- | --- |
+| a region of a language Supertext offers without region | `es_ES`, `es_MX` → `es`; `nl_NL`, `nl_BE` → `nl`; `sl_SI` → `sl`; `nb_NO` → `nb`; `sv_SE` → `sv`; … |
+| Chinese | `zh_Hans_CN` → `zh-Hans`, `zh_Hant_TW`, `zh_Hant_HK` → `zh-Hant` |
+| Serbian | `sr_Latn_RS` → `sr-Latn`, `sr_Cyrl_RS` → `sr-Cyrl` |
+| a bare language (rare in Magento) | `de` → `de-DE`, `en` → `en-US`, `fr` → `fr-FR`, `it` → `it-IT`, `pt` → `pt-PT`, `zh` → `zh-Hans`, `sr` → `sr-Latn` |
+
+3. else nothing: the store view is **Not mapped** and needs its Supertext language. Regions Supertext doesn't offer are never guessed: `en_IE`, `en_AU`, `de_LI`, `de_LU`, `fr_BE`, `fr_CA`, `it_SM` or `sr_RS` could mean several Supertext languages, so that is your decision.
+
+You can choose another Supertext language for any store view, e.g. `de-CH` for a store view with the locale `de_DE`.
 
 *Stores → Configuration → Supertext → Translation → Language*:
 
-- In the *Default Config* scope, **Store views** lists every store view with its locale and the Supertext language it is translated into, *(from the locale)* where no setting is needed, or **Not mapped** with a link to set it. It also names the source language.
-- With a store view chosen in the scope switcher, **Supertext language** is a list of Supertext's codes (empty: the locale, if it is one of them). Below it, the page says what the store view is translated into, or that it is *Not mapped*. A store view that is not mapped can't be ticked on the *Translate with Supertext* page and nothing is sent for it; translating into it (e.g. with `supertext:translate`) fails with *The language "…" has no Supertext language yet*.
+- In the *Default Config* scope, **Store views** lists every store view with its locale and the Supertext language it is translated into: chosen, *(from the locale)*, *(default for the locale)*, or **Not mapped** with a link to set it. It also names the source language.
+- With a store view chosen in the scope switcher, **Supertext language** is a Magento select with Supertext's languages as *Name (code)*, the names in your admin interface language (e.g. *German (Switzerland) (de-CH)*), sorted by name. The empty first entry is the default for the store view's locale and names it (*Default: Spanish (es)*); for a locale without a default it reads *– Choose –*. Below the select, the page says what the store view is translated into. Saving accepts only codes from the list. A store view that is not mapped can't be ticked on the *Translate with Supertext* page and nothing is sent for it; translating into it (e.g. with `supertext:translate`) fails with *The language "…" has no Supertext language yet*.
 - The same setting counts for the source: the default values are sent in the default locale's language (`en_US` → `en`); if the default store view has the default locale and a Supertext language, its language is used (`de-CH` → `de`).
 - **Tone**: *Formal (Sie, vous)*, *Informal (du, tu)* or *Supertext default* (also settable for all store views or per website). Supertext offers no formal/informal choice for English, Swiss German, Romansh, Albanian and Serbian; for those, the module sends the Supertext default, and the *Store views* overview says so.
 
-A code you saved before that isn't in the list (for example one Supertext added later, or one entered in version 0.1) stays selected and is sent as it is.
+A code you saved before that isn't in the list (for example one entered in version 0.1) stays selected and is sent as it is until you change it; codes you saved earlier from the list stay as they are. Store views you never set now use their default, so nothing needs migrating.
 
-<img src="images/module-language-store.png" alt="The Language group in the scope of the store view Deutsch (Schweiz): an empty Supertext language code field (Empty: the store view's locale) and Tone Supertext default, inherited from the website" width="720">
+For automated setups, set the value with Magento's own configuration tools instead of the screen, e.g. `bin/magento config:set --scope=stores --scope-code=es supertext/language/code es` (add `--lock-env` or `--lock-config` to keep it in `app/etc/env.php` or `config.php`); Magento then shows the field as locked for that store view.
+
+<img src="images/module-language-store.png" alt="The Language group in the scope of the store view Deutsch (Schweiz): the Supertext language select and Tone Supertext default, inherited from the website (screenshot from version 0.1.0; the empty entry now names the default for the locale)" width="720">
 
 ## 4. Check it works
 
@@ -123,7 +139,7 @@ Export for translation and Import translation (on the same page) need the same r
 Nothing to configure: the *Translate with Supertext* page's **Export for translation** and **Import translation** use the same store views, Supertext languages, rules and rights as translating with Supertext, without calling the Supertext API.
 
 - **Upload size:** at most 10 MB per file. PHP's `upload_max_filesize` and `post_max_size` must allow that (their defaults, 2 MB and 8 MB, are lower: raise them to `10M`/`12M` if editors import large files). The file is read in memory; nothing is stored besides PHP's own temporary upload file.
-- A store view without a Supertext language doesn't block the export: it is written into the file with its locale (`es_AR` → `es-AR`).
+- A store view that is *Not mapped* doesn't block the export: it is written into the file with its locale (`en_IE` → `en-IE`).
 
 ## Interface languages
 
@@ -199,7 +215,7 @@ Translations made so far stay in your shop: store-view values of products and ca
 | *Your Supertext translation limit is exceeded* | Your Supertext plan's volume is used up. |
 | *Timed out waiting* | Very long content: raise the *Timeout* (and PHP's `max_execution_time`). |
 | *Could not reach Supertext* | The server can't make outbound HTTPS calls; check the firewall or proxy (`HTTPS_PROXY`). The reason follows in brackets. |
-| *The language "…" has no Supertext language yet* / *Not mapped* | The store view's locale isn't a Supertext code (e.g. `es_ES`, `nl_NL`). Choose its **Supertext language** in store view scope (see [Supertext language and tone](#supertext-language-and-tone)). |
+| *The language "…" has no Supertext language yet* / *Not mapped* | The store view's locale is neither a Supertext code nor has a default (e.g. `en_IE`, `de_LI`, `fr_BE`). Choose its **Supertext language** in the select in store view scope (see [Supertext language and tone](#supertext-language-and-tone)). |
 | *The source language "…" (the default locale) has no Supertext language yet* | The default locale's language isn't one Supertext translates from. Choose the Supertext language of the default store view, or change the default locale. |
 | *Supertext does not translate from "…" into "…"* | A saved Supertext language that Supertext doesn't offer, or the same language as the source. Choose another one from the list in store view scope (step 3). |
 | *Supertext offers no formal or informal tone for this language* | Supertext refused the tone for a code the module's list doesn't know. Set the store view's tone to *Supertext default*. |

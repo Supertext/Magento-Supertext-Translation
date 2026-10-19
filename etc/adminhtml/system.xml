@@ -58,14 +58,14 @@
 
             <group id="language" translate="label comment" sortOrder="20" showInDefault="1" showInWebsite="1" showInStore="1">
                 <label>Language</label>
-                <comment><![CDATA[Each store view needs a Supertext language. A store view whose locale (<em>General → Locale Options → Locale</em>) is one of Supertext's codes (de_CH → de-CH, fr_FR → fr-FR) uses it as it is; every other locale (es_ES, nl_NL, zh_Hans_CN, …) needs its Supertext language here. Supertext never guesses a region. Choose the store view in the <em>Scope</em> switcher at the top to set these per store view.]]></comment>
+                <comment><![CDATA[Each store view is translated into a Supertext language. A store view whose locale (<em>General → Locale Options → Locale</em>) is one of Supertext's codes (de_CH → de-CH, fr_FR → fr-FR) uses it as it is; most other locales have a default (es_ES → es, nl_NL → nl, zh_Hans_CN → zh-Hans). Only a locale without one (en_IE, de_LI, …) needs its Supertext language here, and any store view can choose another one. Choose the store view in the <em>Scope</em> switcher at the top to set these per store view.]]></comment>
                 <field id="overview" translate="label" sortOrder="5" showInDefault="1" showInWebsite="0" showInStore="0">
                     <label>Store views</label>
                     <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\LanguageOverview</frontend_model>
                 </field>
                 <field id="code" translate="label comment" type="select" sortOrder="10" showInDefault="0" showInWebsite="0" showInStore="1">
                     <label>Supertext language</label>
-                    <comment>Supertext's own codes. Empty: the store view's locale, if it equals one of them. Also used as the source language for the default store view (only the language counts: de-CH → de).</comment>
+                    <comment>Supertext's languages. Empty: the default for the store view's locale, named in the list. Also used as the source language for the default store view (only the language counts: de-CH → de).</comment>
                     <source_model>Supertext\Translation\Model\Config\Source\TargetLanguage</source_model>
                     <frontend_model>Supertext\Translation\Block\Adminhtml\System\Config\LanguageSelect</frontend_model>
                     <backend_model>Supertext\Translation\Model\Config\Backend\LanguageCode</backend_model>

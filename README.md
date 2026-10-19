@@ -8,7 +8,7 @@ Select products in *Catalog → Products* (or pages and blocks in *Content*), ch
 - Translates names, descriptions, SEO fields and page/block content; formatting, links, Page Builder layouts and `{{…}}` directives are kept
 - URL keys follow the translated name, with URL rewrites and a redirect from the old URL
 - Fills only untranslated store-view values unless you tick *Overwrite existing translations*, with a clear warning first
-- A Supertext language per store view (Supertext's own codes, never guessed) and a formal or informal tone where Supertext offers one
+- A Supertext language per store view (a select of Supertext's own codes; obvious defaults such as es_ES → es, nothing else guessed) and a formal or informal tone where Supertext offers one
 - Automatic API key check and optional version information for Supertext support (on by default, `SUPERTEXT_VERSION_REPORTS=0` turns it off)
 - **Export for translation** (XLIFF 1.2 or HTML) and **Import translation** of translated files, for translation tools, translators or Supertext's web app, on the same page
 - Also on the command line: `bin/magento supertext:translate product 1 2 --store=de_ch`

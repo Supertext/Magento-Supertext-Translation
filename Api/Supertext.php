@@ -135,13 +135,13 @@ final class Supertext
 
         if ($e->targetLang === null && $e->sourceLang !== null) {
             return [
-                'The source language "%1" (the default locale) has no Supertext language yet. An administrator can choose it under Stores → Configuration → Supertext → Translation → Language, with the default store view selected as Scope.',
+                'The source language "%1" (the default locale) has no Supertext language yet. An administrator can choose it in the Supertext language list under Stores → Configuration → Supertext → Translation → Language, with the default store view selected as Scope.',
                 [$code],
             ];
         }
 
         return [
-            'The language "%1" has no Supertext language yet. An administrator can choose it under Stores → Configuration → Supertext → Translation → Language, with this store view selected as Scope.',
+            'The language "%1" has no Supertext language yet. An administrator can choose it in the Supertext language list under Stores → Configuration → Supertext → Translation → Language, with this store view selected as Scope.',
             [$code],
         ];
     }
